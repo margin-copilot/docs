@@ -1,0 +1,11 @@
+web|public|Margin Copilot web app: chat and approval screens (React, Vite, MSAL.js)
+orchestrator|public|Margin Copilot orchestrator agent: chat API that calls the specialist agents over A2A
+data-agent|public|Margin Copilot data agent: read-only SQL over Fabric as the signed-in user
+policy-agent|public|Margin Copilot policy agent: cited search over pricing policies in Azure AI Search
+action-agent|public|Margin Copilot action agent: drafts price-change proposals for human approval
+proposals-api|public|Margin Copilot proposals API: approval rules and proposal storage, no LLM
+shared|public|Margin Copilot shared library: contracts and the security module used by every service
+data|public|Margin Copilot data: synthetic dataset generator, RLS scripts, policy documents, indexer
+evals|public|Margin Copilot evals: golden and adversarial test suites
+docs|public|Margin Copilot docs: start here to learn how the whole system works
+infra|private|Margin Copilot infrastructure: Bicep and non-secret configuration
