@@ -43,7 +43,7 @@ Dockerfile  pyproject.toml  .env.example  .github/workflows/{ci,deploy}.yml
 
 | # | Milestone | Hours | Done when |
 |---|---|---|---|
-| 0 | Accounts and guardrails: Azure free account, budget alerts as code, Entra test users (north.mgr, center.mgr, south.mgr, pricing.director) and groups, the GitHub organization with eleven repos, secret scanning and CI, docs hub | 4 | Alerts set, four users sign in, repos exist with a passing empty CI |
+| 0 | Accounts and guardrails: Azure free account, budget alerts as code, Entra test users (north.mgr, center.mgr, south.mgr, pricing.director) and groups, the GitHub organization with eleven repos, secret scanning and CI, docs hub | 4 | Alerts set, four users sign in, repos exist with a passing empty CI — done 2026-11-15 |
 | 1 | App registrations and managed identities, `shared` + service template + **A2A/OBO spike deployed to Container Apps** (orchestrator stub → data-agent stub, internal ingress, peer-to-peer encryption) | 12 | A request signed in as north.mgr crosses one A2A hop; the agent's tool receives a fresh OBO token; a token from the wrong caller is rejected |
 | 2 | Eval harness: golden and adversarial cases, CI suite on fakes | 5 | CI runs and fails for the right reasons |
 | 3 | Fabric data + RLS. **Start the Fabric trial here.** | 8 | north.mgr and south.mgr get different rows from the same query; story checks pass |
