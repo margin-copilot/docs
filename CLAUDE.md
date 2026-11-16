@@ -50,6 +50,7 @@ Docs rule: cross-cutting behavior (architecture, identity, decisions, guides) li
 ## Never do these
 
 - **No secrets in any repo, image or log**, including the private infra repo. Commit `.env.example` with names only; `.env` stays gitignored. Prefer keyless: managed identities, federated credentials, GitHub OIDC. Anything that can't be keyless goes to Key Vault.
+- **No owner-specific values in code or docs.** No usernames, emails, home paths, tenant domains, subscription names or IDs. Everything account-specific is configurable: read at runtime (`az`, Microsoft Graph, existing Azure resources) or set in the repo's gitignored `.env`, with every setting listed in a committed `.env.example`. That includes test users and groups, alert emails, region, GitHub org, and Azure resource and workspace names. Anyone can run the code on their own Azure account without editing it. Docs use placeholders such as `<workspace>` and `<your-email>`.
 - Never read user data with a service's own identity. Fabric SQL and per-user search always run on the user's OBO token or the user's groups claim.
 - Never forward a token to a service it wasn't issued for. Do an OBO exchange at every hop.
 - Every service validates every request with the `shared` security module: signature (JWKS), issuer = our tenant, `aud` = this service, required `scp`, and the calling app (`azp`) on an allow-list. Reject otherwise. Never write a second token check.

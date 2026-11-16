@@ -156,3 +156,8 @@ One entry per decision: what, why, what was rejected, and what would make us rev
 - **Decision:** All repos live in the free GitHub organization `margin-copilot`, named without a prefix (`margin-copilot/orchestrator`). Repos are created empty and get their MIT LICENSE locally, so every commit carries the owner's no-reply email. CI runs the gitleaks CLI (release binary, checksum-verified) instead of `gitleaks/gitleaks-action`, which needs a license key for organizations.
 - **Why:** One place for the whole project, like a GitLab group; shorter names; an organization profile can act as the landing page; images publish under `ghcr.io/margin-copilot/`. Free plan, unlimited repos.
 - **Rejected:** Prefixed repos under the personal account (scattered among other repos).
+
+### D-026 Everything account-specific is configuration
+- **Decision:** No code or doc names the owner's usernames, emails, home paths, tenant domain or Azure IDs. Scripts read account-specific values at runtime (tenant default domain from Graph, subscription from `az`, an existing budget's start date from Azure) or from the repo's gitignored `.env`; a committed `.env.example` lists every setting. Configurable so far: `ALERT_EMAIL`, `BUDGET_AMOUNT`, `BUDGET_NAME`, `AZURE_LOCATION`, `ENTRA_DOMAIN`, `TEST_USERS`, `TEST_GROUPS`, `GITHUB_ORG`. Azure resource and workspace names follow the same rule as they're added.
+- **Why:** Privacy, and anyone can deploy the same code to their own Azure account and GitHub org without editing hardcoded names.
+- **Watch:** Azure rejects a changed budget start date, so `deploy-budget.sh` reuses the existing budget's.
