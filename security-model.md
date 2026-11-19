@@ -55,12 +55,14 @@ Each confidential app authenticates to Entra with a federated credential that tr
 ## Data: region security in Azure SQL
 
 Sales data lives in an Azure SQL free-offer database on an Entra-only server (no SQL passwords). T-SQL row-level security filters every user, the admin included.
-- **The policy:** `rls.region_policy` filters every table with `region_id` (`fact_sales`, `supplier_costs`, `promotions`, `price_history`, `competitor_prices`).
+- **The policy:** `rls.region_policy` filters every regional table (`fact_sales`, `supplier_costs`, `promotions`, `price_history`, `competitor_prices`).
 - **How it filters:** the function `rls.fn_region_filter` keeps a row only if the caller's sign-in name (`ORIGINAL_LOGIN()`) maps to that region, or to `*`, in `rls.user_region`.
 - **The mapping:** built from settings at load time, so no tenant UPN is in the repo.
 - **Users and roles:** each test user has a database user in `pricing_readers`, which reads `dbo` and is denied the `rls` schema.
 - **Connections:** clients connect with their own Entra token, and pooling is off, so one user's connection is never reused for another. The firewall admits the laptop's IP only, until milestone 4.
 - **Proof:** `evals/live/rls_check.py` signs in as three users and compares what each sees.
+- **Residual risk: inference through errors.** RLS filters rows, but a crafted query can still raise errors that reveal values in rows the filter hides. Microsoft documents this; for example, a divide-by-zero on a hidden row. A test user with direct SQL access can try it today. From milestone 4, `run_sql` returns a generic error and never passes SQL error text to the model or the user (eval case A-20), and milestone 11 tests it adversarially.
+- **Reference tables:** `dim_region` and `dim_store` carry `region_id` but aren't filtered; region and store lists aren't sensitive. Every other `dbo` table with `region_id` is filtered automatically (`rls.regional_tables()`).
 
 ## Network
 

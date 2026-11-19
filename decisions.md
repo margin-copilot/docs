@@ -235,3 +235,4 @@ One entry per decision: what, why, what was rejected, and what would make us rev
   - The data-tools app keeps its Fabric API and Storage consents, and the admin keeps the Fabric Administrator role, for milestone 12.
   - `dim_store` carries `region_id` but isn't filtered: the store list isn't sensitive.
   - Milestone 4 adds the data-agent's Azure SQL consent for OBO.
+  - RLS doesn't stop inference through errors (Learn: "carefully crafted queries"). `run_sql` must return generic errors only, from milestone 4 (eval case A-20).
