@@ -188,3 +188,16 @@ One entry per decision: what, why, what was rejected, and what would make us rev
   - Golden wording may be stricter than a correct answer; each milestone reviews its cases against real answers before bumping `CURRENT_MILESTONE`.
   - Golden cases need a model, and milestone 4 decides whether CI gets one keylessly or golden cases run only in the live suite.
   - Groundedness is checked through required facts and citations. Model-judged scores (azure-ai-evaluation: groundedness, tool-call accuracy) join the live suite in milestone 7.
+- **Amended after the milestone 2 review:**
+  - **Server errors:** a 5xx where a case expects an answer is a `SystemFault`, never an expected failure. A broken downstream can't hide behind pending cases.
+  - **Number matching:** numbers in `contains`/`not_contains` match whole (`0%` isn't in `30%`, `21.3` isn't in `121.3`). Words still match inside longer words.
+  - **Forbidden alternatives:** each `|` alternative in `not_contains` is forbidden on its own.
+  - **`not_agents`:** lists agents that must not be called. Example: the action agent when a prompt or a retrieved document asks for an approval.
+  - **Field timing:** each response field arrives at the first milestone whose cases use it, not all at milestone 7:
+    - `agents` and `refusal` at milestone 4;
+    - `citations` and routing to the policy agent at milestone 5;
+    - routing to the action agent at milestone 6.
+  - **Harness changes ride along:** the evals harness (`system.py`) gains each new agent in the same milestone.
+  - **Not testable through `/chat`, so tested elsewhere:**
+    - D-012 approval boundaries (e.g. 4.0% vs 4.1% on Tier B) are tested in proposals-api.
+    - A conversation-resume hijack case (D-011) is added once conversation IDs exist (milestone 7).
