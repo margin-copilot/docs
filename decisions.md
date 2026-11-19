@@ -198,6 +198,10 @@ One entry per decision: what, why, what was rejected, and what would make us rev
     - `citations` and routing to the policy agent at milestone 5;
     - routing to the action agent at milestone 6.
   - **Harness changes ride along:** the evals harness (`system.py`) gains each new agent in the same milestone.
+  - **Missing fields:** a response missing `agents` or `citations` fails any case that checks it, so contract drift is visible.
+  - **Error reasons:** `expect.error` checks the reason on error responses (e.g. `calling app not allowed`).
+  - **Partial answers:** `refusal` stays `null` whenever any part of the question was answered; the text says what's missing.
+    `refusal` is set only when nothing could be answered.
   - **Not testable through `/chat`, so tested elsewhere:**
     - D-012 approval boundaries (e.g. 4.0% vs 4.1% on Tier B) are tested in proposals-api.
     - A conversation-resume hijack case (D-011) is added once conversation IDs exist (milestone 7).
