@@ -11,7 +11,7 @@ One entry per decision: what, why, what was rejected, and what would make us rev
 | D-005 | Azure Container Apps, not Kubernetes | 2026-11-15 |
 | D-006 | A2A between services, behind a port | 2026-11-15 |
 | D-007 | Entra OBO at every hop, caller allow-lists, no secrets | 2026-11-15 |
-| D-008 | Custom `run_sql` over the Lakehouse SQL endpoint with T-SQL RLS | 2026-11-15 |
+| D-008 | Custom `run_sql` with T-SQL RLS (Lakehouse at first; Azure SQL since D-031) | 2026-11-15 |
 | D-009 | Policy search on AI Search Free with a group-ID filter | 2026-11-15 |
 | D-010 | Proposals and conversation pointers in Azure Table Storage | 2026-11-15 |
 | D-011 | Conversation history managed by Foundry, with ownership checks | 2026-11-15 |
@@ -29,6 +29,12 @@ One entry per decision: what, why, what was rejected, and what would make us rev
 | D-023 | App registrations are created in milestone 1, with their managed identities | 2026-11-15 |
 | D-024 | Stay on the free account's spending cap until the upgrade is needed | 2026-11-15 |
 | D-025 | GitHub organization `margin-copilot` holds all repos; CI runs the gitleaks CLI | 2026-11-15 |
+| D-026 | Everything account-specific is configuration | 2026-11-16 |
+| D-027 | App registrations by script, not Graph Bicep | 2026-11-16 |
+| D-028 | Agent card served without a token, inside the environment only | 2026-11-16 |
+| D-029 | Eval cases first, gated by milestone; the chat response contract | 2026-11-19 |
+| D-030 | Plain-Python generator | 2026-11-19 |
+| D-031 | Azure SQL free offer for the data, with T-SQL RLS | 2026-11-19 |
 
 ---
 
@@ -79,6 +85,7 @@ One entry per decision: what, why, what was rejected, and what would make us rev
 - **Why:** Runs on the free Fabric trial. The endpoint is read-only, a second safety layer behind the SELECT check. RLS applies to every user, admins included. No copy into a Warehouse.
 - **Rejected:** Fabric Data Agent as the core (not on the trial; per-user OBO from Python is undocumented), now a stretch goal on F2 hours. Warehouse (extra copy step). User-identity mode (ignores T-SQL RLS).
 - **Watch:** switching the endpoint mode deletes SQL roles; deny managers SELECT on `rls.user_region`.
+- **Superseded in part (milestone 3, 2026-11-19):** the Fabric trial was refused for the new tenant, so the data lives in the Azure SQL Database free offer (D-031). The T-SQL RLS and per-user token design is unchanged. The Fabric lakehouse and the Fabric Data Agent move to milestone 12, with paid F2 hours.
 
 ### D-009 Policy search on AI Search Free
 - **Decision:** One search document per policy clause; hybrid + semantic query; filter `group_ids/any(...)` on the user's Entra groups from the token; `is_fixture eq false` in production.
@@ -120,6 +127,7 @@ One entry per decision: what, why, what was rejected, and what would make us rev
 ### D-017 Hosting
 - **Decision:** Azure in France Central (Container Apps, Static Web Apps, Foundry, AI Search, Storage, Key Vault, App Insights); Microsoft Fabric for the lakehouse and Power BI; GitHub for code, CI/CD and container images (ghcr.io); local development on the owner's laptop.
 - **Why:** France Central has the cheapest F2 in the EU; Global model deployments; everything else on free tiers.
+- **Update (milestone 3):** the data lives in the Azure SQL Database free offer (D-031); Fabric appears only in milestone 12, on paid F2 hours.
 
 ### D-018 Web app
 - **Decision:** React + Vite + MSAL.js, two screens (chat, approvals), on Static Web Apps Free.
@@ -205,3 +213,25 @@ One entry per decision: what, why, what was rejected, and what would make us rev
   - **Not testable through `/chat`, so tested elsewhere:**
     - D-012 approval boundaries (e.g. 4.0% vs 4.1% on Tier B) are tested in proposals-api.
     - A conversation-resume hijack case (D-011) is added once conversation IDs exist (milestone 7).
+
+### D-030 Plain-Python generator
+- **Decision:** The `data` repo generates the dataset in plain Python (seed 42) and loads it with `mssql-python`, not with PySpark.
+- **Why:** The generator and its 11 story checks run in CI and on a laptop in seconds, with no Spark and no capacity use. Dairy margins are calibrated to the preview's monthly targets, and the October bridge is checked.
+
+### D-031 Azure SQL free offer for the data, with T-SQL RLS
+- **Decision:** One Azure SQL Database on the free offer (serverless, `useFreeLimit`, `AutoPause` on exhaustion), on an Entra-only server whose admin is a native work account (`ADMIN_USERS`).
+  - The firewall admits the laptop's IP only.
+  - `riad-data` signs in through the `<prefix>-data-tools` public client. It creates a database user per test user plus a `pricing_readers` role (SELECT on `dbo`, DENY on `rls`). Then, in one transaction, it loads the tables, the rows and the policy.
+  - The predicate compares `LOWER(ORIGINAL_LOGIN())` with `rls.user_region`, which is built from `ENTRA_DOMAIN` and `USER_REGIONS` at load time. Region `*` means all regions.
+- **Why:**
+  - The Fabric trial was refused ("A Fabric trial isn't available for your account"). F2 costs about $0.40/h and would limit experimenting on a $20 budget.
+  - Azure SQL keeps the same security design (T-SQL RLS on the user's own token, OBO in milestone 4) at $0.
+  - The tenant's personal-account Global Admin isn't used for data.
+- **Rejected:** Fabric F2 now (cost); waiting for trial eligibility (undocumented, weeks to months).
+- **Watch:**
+  - RLS filters the admin (`dbo`) too, by design.
+  - A changed laptop IP needs a re-deploy.
+  - Milestone 4 decides how Container Apps reaches the database. Not the "Allow Azure services" rule, which admits every Azure customer.
+  - The data-tools app keeps its Fabric API and Storage consents, and the admin keeps the Fabric Administrator role, for milestone 12.
+  - `dim_store` carries `region_id` but isn't filtered: the store list isn't sensitive.
+  - Milestone 4 adds the data-agent's Azure SQL consent for OBO.

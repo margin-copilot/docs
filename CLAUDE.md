@@ -17,7 +17,7 @@ The master copy of this file is `docs/CLAUDE.md` (the docs repo). The workspace 
 ```
 Browser: web SPA (Static Web Apps, MSAL sign-in)
   → orchestrator-agent   [Container App, external ingress]   MAF orchestrator, chat API
-      ─A2A→ data-agent   [internal]  run_sql → Fabric Lakehouse SQL endpoint (T-SQL RLS, user's OBO token)
+      ─A2A→ data-agent   [internal]  run_sql → Azure SQL free-offer database (T-SQL RLS, user's OBO token)
       ─A2A→ policy-agent [internal]  search_policies → AI Search Free (filter on user's Entra groups)
       ─A2A→ action-agent [internal]  draft_proposal → proposals-api (creates PENDING drafts only)
   → proposals-api        [Container App, external ingress]   no LLM; list / approve / reject; Table Storage
@@ -40,7 +40,7 @@ All repos belong to the GitHub organization **margin-copilot** (`github.com/marg
 | action-agent | public | A2A server, `draft_proposal` |
 | proposals-api | public | Approval rules, Table Storage |
 | shared | public | Pydantic contracts + security module (token check, OBO, request context). Installed from a git tag. |
-| data | public | PySpark generator, T-SQL RLS scripts, policy Markdown, indexer, story checks |
+| data | public | Python generator, riad-data loader (Azure SQL), T-SQL RLS, story checks; later: policy Markdown, indexer |
 | evals | public | Golden + adversarial cases and runners |
 | docs | public | **Start here.** How the whole system works, decisions, security model, roadmap, run-it-yourself guide. Every service README links to it. |
 | infra | **private** | Bicep, parameter files, setup scripts. **Non-secret config only.** |
@@ -51,7 +51,7 @@ Docs rule: cross-cutting behavior (architecture, identity, decisions, guides) li
 
 - **No secrets in any repo, image or log**, including the private infra repo. Commit `.env.example` with names only; `.env` stays gitignored. Prefer keyless: managed identities, federated credentials, GitHub OIDC. Anything that can't be keyless goes to Key Vault.
 - **No owner-specific values in code or docs.** No usernames, emails, home paths, tenant domains, subscription names or IDs. Everything account-specific is configurable: read at runtime (`az`, Microsoft Graph, existing Azure resources) or set in the repo's gitignored `.env`, with every setting listed in a committed `.env.example`. That includes test users and groups, alert emails, region, GitHub org, and Azure resource and workspace names. Anyone can run the code on their own Azure account without editing it. Docs use placeholders such as `<workspace>` and `<your-email>`.
-- Never read user data with a service's own identity. Fabric SQL and per-user search always run on the user's OBO token or the user's groups claim.
+- Never read user data with a service's own identity. Database queries and per-user search always run on the user's OBO token or the user's groups claim.
 - Never forward a token to a service it wasn't issued for. Do an OBO exchange at every hop.
 - Every service validates every request with the `shared` security module: signature (JWKS), issuer = our tenant, `aud` = this service, required `scp`, and the calling app (`azp`) on an allow-list. Reject otherwise. Never write a second token check.
 - Never take authorization facts (region, role, approver) from model output or request bodies. Only from the validated token.
@@ -78,6 +78,7 @@ Pinned versions (checked 2026-11-16; re-check before pinning): a2a-sdk 1.3.0 (ke
 
 - One milestone at a time (`docs/roadmap.md`). Before a milestone, write an implementation plan in `docs/plans/` and get the owner's OK.
 - A milestone is done when its eval cases pass. Review the activated cases' wording against real answers, bump `CURRENT_MILESTONE` in `evals`, and tag any changed service so evals can pin it.
+- Keep the owner's local Obsidian vault (<workspace>/vault/, not versioned) current. At each milestone's end and with every contract or impactful change, update the milestone page, the affected repo pages, Home status and a new release note.
 - Small, reviewable changes. After each change, summarize the diff and run the tests, and report results as they are.
 - Commit only when the owner asks; push only with explicit permission. A plan the owner approved covers the pushes it lists.
 - New decision or a reversed one: add an entry to `docs/decisions.md` in the same change.
@@ -85,5 +86,5 @@ Pinned versions (checked 2026-11-16; re-check before pinning): a2a-sdk 1.3.0 (ke
 ## Budget guardrails
 
 - Budget alerts at $10 and $18 from day one.
-- Fabric F2 is paused at the end of every session. A forgotten F2 costs about $9.60 a day.
+- The data runs on the Azure SQL free offer (AutoPause, never BillOverUsage). Fabric F2 appears only in milestone 12 and is paused at the end of every session; a forgotten F2 costs about $9.60 a day.
 - AI Search stays on the Free tier. Container Apps scale to zero. Images go to the GitHub container registry (public).

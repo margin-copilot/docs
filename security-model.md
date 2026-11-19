@@ -52,6 +52,16 @@ Each confidential app authenticates to Entra with a federated credential that tr
 
 `AuthMiddleware` stores the validated caller and token in a request-scoped context variable. a2a-sdk (from 1.2.3) runs the agent executor inside a copy of the request's context, so a tool reads the caller with `current_request()`, and concurrent requests never see each other. Authorization facts come from the validated token only, never from the message or a model.
 
+## Data: region security in Azure SQL
+
+Sales data lives in an Azure SQL free-offer database on an Entra-only server (no SQL passwords). T-SQL row-level security filters every user, the admin included.
+- **The policy:** `rls.region_policy` filters every table with `region_id` (`fact_sales`, `supplier_costs`, `promotions`, `price_history`, `competitor_prices`).
+- **How it filters:** the function `rls.fn_region_filter` keeps a row only if the caller's sign-in name (`ORIGINAL_LOGIN()`) maps to that region, or to `*`, in `rls.user_region`.
+- **The mapping:** built from settings at load time, so no tenant UPN is in the repo.
+- **Users and roles:** each test user has a database user in `pricing_readers`, which reads `dbo` and is denied the `rls` schema.
+- **Connections:** clients connect with their own Entra token, and pooling is off, so one user's connection is never reused for another. The firewall admits the laptop's IP only, until milestone 4.
+- **Proof:** `evals/live/rls_check.py` signs in as three users and compares what each sees.
+
 ## Network
 
 All apps share one Container Apps environment with peer-to-peer encryption on. Only the orchestrator has external ingress; the data-agent answers only inside the environment (404 from outside). Container Apps authenticates apps to each other but doesn't authorize them; the token checks above do.
