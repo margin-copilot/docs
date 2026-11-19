@@ -45,7 +45,7 @@ Dockerfile  pyproject.toml  .env.example  .github/workflows/{ci,build}.yml (ci =
 |---|---|---|---|
 | 0 | Accounts and guardrails: Azure free account, budget alerts as code, Entra test users (north.mgr, center.mgr, south.mgr, pricing.director) and groups, the GitHub organization with eleven repos, secret scanning and CI, docs hub | 4 | Alerts set, four users sign in, repos exist with a passing empty CI — done 2026-11-15 |
 | 1 | App registrations and managed identities, `shared` + service template + **A2A/OBO spike deployed to Container Apps** (orchestrator stub → data-agent stub, internal ingress, peer-to-peer encryption) | 12 | A request signed in as north.mgr crosses one A2A hop; the agent's tool receives a fresh OBO token; a token from the wrong caller is rejected — done 2026-11-19 |
-| 2 | Eval harness: golden and adversarial cases, CI suite on fakes | 5 | CI runs and fails for the right reasons |
+| 2 | Eval harness: golden and adversarial cases, CI suite on fakes | 5 | CI runs and fails for the right reasons — done 2026-11-19 |
 | 3 | Fabric data + RLS. **Start the Fabric trial here.** | 8 | north.mgr and south.mgr get different rows from the same query; story checks pass |
 | 4 | data-agent: `run_sql`, SQL guard, OBO, `mssql-python` | 8 | Data and RLS eval cases pass against Fabric |
 | 5 | policy-agent: policy Markdown, indexer, group filter | 7 | Groundedness and access cases pass |
@@ -88,5 +88,6 @@ The Fabric trial starts in week 3 and ends around week 11, so every Fabric-depen
 ## Open questions
 
 1. **Chat model:** gpt-5-mini or gpt-6-luna, decided by eval scores and cost at M4–M7.
+2. **Golden cases in CI:** call Foundry from CI through GitHub OIDC (keyless; costs cents per run), or run golden cases only in the live suite. Decide at milestone 4 (D-029).
 
 Resolved on 2026-11-15: CI eval tokens (D-019), where docs live (D-020), license (D-021), where `CLAUDE.md` lives (D-022).

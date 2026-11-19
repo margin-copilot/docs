@@ -171,3 +171,20 @@ One entry per decision: what, why, what was rejected, and what would make us rev
 ### D-028 Agent card served without a token, inside the environment only
 - **Decision:** Agents serve `/.well-known/agent-card.json` without a token; every other path requires one.
 - **Why:** Clients fetch the card once to learn the endpoint, before any user is involved; it describes skills, not data. Internal ingress keeps it inside the Container Apps environment.
+
+### D-029 Eval cases first, gated by milestone; the chat response contract
+- **Decision:** Eval cases are TOML data in the `evals` repo. Each names the first milestone where it must pass.
+  - pytest runs every case against the system on fake adapters.
+  - Cases up to `CURRENT_MILESTONE` must pass.
+  - Later cases are `xfail(strict=True, raises=CaseFailed)`. They must fail only because the system answered differently from the case; a crash or an early pass fails CI.
+  - A 200 case needs at least one positive check. Negative checks alone pass on a system that says nothing.
+- **Response contract:** `POST /chat` returns JSON with these fields; services implement them by milestone 7:
+  - `answer` (text);
+  - `refusal`: `null`, `out_of_scope`, `no_access` or `no_data` (D-013);
+  - `agents`: the agents called in this turn (`data-agent`, `policy-agent`, `action-agent`);
+  - `citations`: clause IDs such as `PP-04 §3.2`.
+- **Why:** The brief asks for the harness and failing tests first. Strict xfail makes "fails for the right reasons" checkable, and turns each finished milestone into a list of cases that must go green.
+- **Known limits:**
+  - Golden wording may be stricter than a correct answer; each milestone reviews its cases against real answers before bumping `CURRENT_MILESTONE`.
+  - Golden cases need a model, and milestone 4 decides whether CI gets one keylessly or golden cases run only in the live suite.
+  - Groundedness is checked through required facts and citations. Model-judged scores (azure-ai-evaluation: groundedness, tool-call accuracy) join the live suite in milestone 7.

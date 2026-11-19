@@ -4,7 +4,7 @@ A secure multi-agent pricing assistant on Azure, built as a personal learning pr
 
 Pricing managers at Riad Market, a fictional Moroccan grocery chain, ask why margins moved and what pricing policy allows. Four agents answer from synthetic sales data and policy documents, show each manager only their own region, and draft price changes that a person must approve.
 
-**Status:** milestone 1 done (identity across one A2A hop, deployed). Next: milestone 2 (eval harness).
+**Status:** milestone 2 done (eval harness: 58 cases, gated by milestone, in CI). Next: milestone 3 (Fabric data and RLS).
 
 ## Read in this order
 

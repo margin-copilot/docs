@@ -77,6 +77,7 @@ Pinned versions (checked 2026-11-16; re-check before pinning): a2a-sdk 1.3.0 (ke
 ## Workflow
 
 - One milestone at a time (`docs/roadmap.md`). Before a milestone, write an implementation plan in `docs/plans/` and get the owner's OK.
+- A milestone is done when its eval cases pass. Review the activated cases' wording against real answers, bump `CURRENT_MILESTONE` in `evals`, and tag any changed service so evals can pin it.
 - Small, reviewable changes. After each change, summarize the diff and run the tests, and report results as they are.
 - Commit only when the owner asks; push only with explicit permission. A plan the owner approved covers the pushes it lists.
 - New decision or a reversed one: add an entry to `docs/decisions.md` in the same change.
