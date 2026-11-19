@@ -66,6 +66,7 @@ One entry per decision: what, why, what was rejected, and what would make us rev
 - **Known gaps:** The Python package is beta. Server authentication is ours to add ("your application assembles… authentication" in the MAF A2A hosting docs). Passing the caller's token to tools isn't built in (feature request microsoft/agent-framework#2958). Forwarded metadata "isn't an authentication boundary".
 - **Plan:** Starlette middleware validates the token and stores it in a request-scoped context variable; tools read it for the next OBO exchange. Proven in the milestone 1 spike before anything depends on it.
 - **Revisit if:** the spike fails or the beta API churns too much. Fallback: plain HTTPS with JSON contracts, one adapter per side.
+- **Update (milestone 1, 2026-11-16):** both sides use `a2a-sdk` 1.3.0 directly while there's no model in the loop. `agent-framework-a2a` joins in milestone 4, when the orchestrator becomes a MAF agent; its `A2AAgent` takes per-user auth through an `httpx.Auth` that reads the same context variable (checked 2026-11-16). The context-variable plan works because a2a-sdk 1.2.3 and later run the executor inside a copy of the request's context. Proven by in-process tests and the live check.
 
 ### D-007 Entra OBO at every hop, caller allow-lists, no secrets
 - **Decision:** Each service has its own app registration and user-assigned managed identity. Each hop exchanges the incoming user token for one addressed to the next service (OBO). Each service checks signature, issuer, `aud`, `scp` and the calling app (`azp`) against an allow-list. The OBO client credential is a federated credential on the managed identity. GitHub Actions log in with OIDC. Key Vault holds only what can't be keyless (possibly the AI Search query key).
@@ -161,3 +162,12 @@ One entry per decision: what, why, what was rejected, and what would make us rev
 - **Decision:** No code or doc names the owner's usernames, emails, home paths, tenant domain or Azure IDs. Scripts read account-specific values at runtime (tenant default domain from Graph, subscription from `az`, an existing budget's start date from Azure) or from the repo's gitignored `.env`; a committed `.env.example` lists every setting. Configurable so far: `ALERT_EMAIL`, `BUDGET_AMOUNT`, `BUDGET_NAME`, `AZURE_LOCATION`, `ENTRA_DOMAIN`, `TEST_USERS`, `TEST_GROUPS`, `GITHUB_ORG`. Azure resource and workspace names follow the same rule as they're added.
 - **Why:** Privacy, and anyone can deploy the same code to their own Azure account and GitHub org without editing hardcoded names.
 - **Watch:** Azure rejects a changed budget start date, so `deploy-budget.sh` reuses the existing budget's.
+
+### D-027 App registrations by script, not Graph Bicep
+- **Decision:** `infra/scripts/entra-apps.sh` (Azure CLI + Microsoft Graph REST) creates the app registrations, scopes, service principals, federated credentials and consent grants. It's idempotent, with `entra-apps-check.sh` as its test, like the test users.
+- **Why:** The Microsoft Graph Bicep extension doesn't accept a personal Microsoft account as the deployer, and the owner administers the tenant with one. The script works with the same sign-in as everything else.
+- **Revisit if:** the deployer becomes a work account; then Graph Bicep could hold the apps and the managed identities in one template.
+
+### D-028 Agent card served without a token, inside the environment only
+- **Decision:** Agents serve `/.well-known/agent-card.json` without a token; every other path requires one.
+- **Why:** Clients fetch the card once to learn the endpoint, before any user is involved; it describes skills, not data. Internal ingress keeps it inside the Container Apps environment.

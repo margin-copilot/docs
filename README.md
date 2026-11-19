@@ -4,15 +4,16 @@ A secure multi-agent pricing assistant on Azure, built as a personal learning pr
 
 Pricing managers at Riad Market, a fictional Moroccan grocery chain, ask why margins moved and what pricing policy allows. Four agents answer from synthetic sales data and policy documents, show each manager only their own region, and draft price changes that a person must approve.
 
-**Status:** milestone 0 done. Next: milestone 1 (identity across one A2A hop). Nothing is deployed yet.
+**Status:** milestone 1 done (identity across one A2A hop, deployed). Next: milestone 2 (eval harness).
 
 ## Read in this order
 
 1. [brief.md](brief.md): the original idea.
 2. [roadmap.md](roadmap.md): repo layout, milestones and timeline.
 3. [decisions.md](decisions.md): every decision, why it was made, and what was rejected.
-4. [research/2026-11-docs.md](research/2026-11-docs.md): the Microsoft docs and prices behind those decisions, with sources.
-5. [plans/](plans/): step-by-step implementation plans, one per milestone.
+4. [security-model.md](security-model.md): how identity crosses every hop and what each service checks.
+5. [research/2026-11-docs.md](research/2026-11-docs.md): the Microsoft docs and prices behind those decisions, with sources.
+6. [plans/](plans/): step-by-step implementation plans, one per milestone.
 
 ## Architecture at a glance
 
