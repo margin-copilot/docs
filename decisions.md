@@ -242,13 +242,13 @@ One entry per decision: what, why, what was rejected, and what would make us rev
 
 ### D-032 The data agent: gpt-5-mini with a tested margin tool and a checked `run_sql`
 - **Decision:** data-agent is an Agent Framework agent (`agent-framework-core` 1.26.0, `FoundryChatClient`) on a Foundry project's gpt-5-mini deployment (`2025-08-07`, GlobalStandard, reasoning effort medium). It calls the model keylessly with its managed identity, which holds the Foundry User role; the account has local auth disabled.
-  - **`margin(start, end, region?, category?, sku?)`:** net sales, cost of goods and margin % from one tested query. The arguments are checked and bound as parameters, and the query always joins the product table for the category. The model must use it for every margin figure.
-  - **`run_sql`:** sqlglot parses the SQL (T-SQL). The guard accepts one SELECT or set operation over the eight pricing tables in `dbo`. No `INTO`, `APPLY`, temp tables, table-valued functions, other schemas, 3- or 4-part names, or impossible date literals (2026-02-29).
+  - **`margin(start, end, region?, category?, sku?)`:** net sales, cost of goods and margin % from one tested query. The arguments are checked and bound as parameters, the end date is inclusive, and the query always joins the product table for the category. Without a region it lists each region the user can see plus their total, so a manager's total is never presented as the chain's. The model must use it for every margin figure.
+  - **`run_sql`:** sqlglot parses the SQL (T-SQL). The guard accepts one SELECT or set operation over the eight pricing tables in `dbo`. Not allowed: `INTO`, `APPLY`, temp tables, table-valued functions, other schemas, 3- or 4-part names, impossible date literals (2026-02-29), comments, control characters, alias column lists, and T-SQL keywords as unquoted names (sqlglot can read `FROM t EXEC('…')` as an alias while SQL Server runs a second statement).
   - **Connections:** each query exchanges the caller's token for Azure SQL (OBO) and opens its own connection: pooling off, a 30-second timeout, 200 rows, returned as CSV.
   - **What the model sees:**
     - rows;
     - the guard's reason;
-    - errors raised before any row is read (syntax, unknown column or table, GROUP BY): their text names only what the query wrote;
+    - errors raised before any row is read (syntax, unknown column or table, GROUP BY), matched as whole known messages: their text names only what the query wrote;
     - otherwise `query failed`, after which it rewrites the query more simply, at most twice.
     It never sees the text of errors raised while reading rows (A-20).
   - **The refusal label is set by code:**
@@ -308,7 +308,7 @@ One entry per decision: what, why, what was rejected, and what would make us rev
   - A CI model would need GitHub OIDC, a Foundry role and a copy of the data, and would cost money on every push.
 - **Rejected:** Foundry through OIDC in CI with a SQLite copy of the data (diverges from T-SQL RLS); scripted model answers in the eval suite (prove nothing).
 - **Closes** D-029's open question, and milestone-2 deferred items 2–4: fake-mode factories and persona UPNs are no longer needed.
-- **Sign-ins are remembered:** each test user signs in through the browser once. `msal-extensions` keeps the tokens encrypted in the OS keychain (`~/.margin-copilot/msal-token-cache.bin`, outside every repo; delete it to forget them), so later runs are silent. A token is used only for the account whose name matches the case's persona.
+- **Sign-ins are remembered:** each test user signs in through the browser once. `msal-extensions` keeps the tokens encrypted in the OS keychain (macOS: Keychain item `msal-extensions`; forget them with `security delete-generic-password -s msal-extensions`), so later runs are silent. A token is used only for the account whose name matches the case's persona.
 - **Revisit at milestone 10:** deploys gated by evals would need non-interactive test-user tokens for a scheduled live run.
 
 ### D-034 The data agent reaches Azure SQL through firewall rules for its outbound IPs

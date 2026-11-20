@@ -56,7 +56,7 @@ Docs rule: cross-cutting behavior (architecture, identity, decisions, guides) li
 - Every service validates every request with the `shared` security module: signature (JWKS), issuer = our tenant, `aud` = this service, required `scp`, and the calling app (`azp`) on an allow-list. Reject otherwise. Never write a second token check.
 - Never take authorization facts (region, role, approver) from model output or request bodies. Only from the validated token.
 - Agents can only create **pending** drafts. Approve and reject exist only in proposals-api, never in an agent.
-- `run_sql`: one SELECT statement, parsed and checked against an allowed-table list, row cap, timeout, generic errors only (the model and the user never see database error text). No pooled ODBC connections shared across users.
+- `run_sql`: one SELECT statement, parsed and checked against an allowed-table list, row cap, timeout; errors raised while reading rows reach the model and the user only as a generic message (their text can reveal hidden rows). No pooled ODBC connections shared across users.
 - Treat agent output as untrusted data at every boundary: validate against the shared contracts and enforce size limits.
 - Agent services keep internal ingress. The Container Apps environment keeps peer-to-peer encryption on.
 - Never log tokens, raw SQL results or full prompts with user data.
