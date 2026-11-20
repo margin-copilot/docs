@@ -16,9 +16,9 @@ The master copy of this file is `docs/CLAUDE.md` (the docs repo). The workspace 
 
 ```
 Browser: web SPA (Static Web Apps, MSAL sign-in)
-  → orchestrator-agent   [Container App, external ingress]   MAF orchestrator, chat API
+  → orchestrator-agent   [Container App, external ingress]   chat API; a router picks one agent per question (D-035)
       ─A2A→ data-agent   [internal]  run_sql → Azure SQL free-offer database (T-SQL RLS, user's OBO token)
-      ─A2A→ policy-agent [internal]  search_policies → AI Search Free (filter on user's Entra groups)
+      ─A2A→ policy-agent [internal]  reads the clauses the caller's groups may read → AI Search Free (D-036)
       ─A2A→ action-agent [internal]  draft_proposal → proposals-api (creates PENDING drafts only)
   → proposals-api        [Container App, external ingress]   no LLM; list / approve / reject; Table Storage
 Every service: Entra token check on every request, OBO exchange per hop, OTel traces to App Insights.
@@ -72,7 +72,7 @@ Docs rule: cross-cutting behavior (architecture, identity, decisions, guides) li
 - Match the surrounding code. Comments only where the code can't say it.
 - Commits use the owner's GitHub no-reply email. Every repo has the baseline from `docs/templates/` (gitleaks pre-commit hook, CI secret scan, README).
 
-Pinned versions (checked 2026-11-16; re-check before pinning): a2a-sdk 1.3.0 (keep ≥1.2.3), starlette 1.10.0, sse-starlette 3.6.0, uvicorn 0.54.0, httpx 0.28.1, PyJWT 2.15.1, cryptography 50.0.2, msal 1.39.0, azure-identity 1.27.0, pytest 9.2.0, pytest-asyncio 1.4.1, ruff 0.17.3, uv 0.13.6 (CI: astral-sh/setup-uv@v10.3.3), gitleaks 8.30.1, agent-framework-core 1.26.0 (not the `agent-framework` meta package, which pulls ~40 provider packages), agent-framework-foundry 1.16.2, mssql-python 1.17.0, pydantic 2.14.3, sqlglot 30.29.0, msal-extensions 1.3.1. For later milestones: agent-framework-a2a 1.0.0b261112, azure-ai-projects 2.11.0, azure-ai-evaluation 1.18.12, azure-search-documents 12.1.0, openai 3.51.0.
+Pinned versions (checked 2026-11-16; re-check before pinning): a2a-sdk 1.3.0 (keep ≥1.2.3), starlette 1.10.0, sse-starlette 3.6.0, uvicorn 0.54.0, httpx 0.28.1, PyJWT 2.15.1, cryptography 50.0.2, msal 1.39.0, azure-identity 1.27.0, pytest 9.2.0, pytest-asyncio 1.4.1, ruff 0.17.3, uv 0.13.6 (CI: astral-sh/setup-uv@v10.3.3), gitleaks 8.30.1, agent-framework-core 1.26.0 (not the `agent-framework` meta package, which pulls ~40 provider packages), agent-framework-foundry 1.16.2, mssql-python 1.17.0, pydantic 2.14.3, sqlglot 30.29.0, msal-extensions 1.3.1, azure-search-documents 12.1.0. For later milestones: agent-framework-a2a 1.0.0b261112, azure-ai-projects 2.11.0, azure-ai-evaluation 1.18.12, openai 3.51.0.
 
 ## Workflow
 

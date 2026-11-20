@@ -38,6 +38,9 @@ One entry per decision: what, why, what was rejected, and what would make us rev
 | D-032 | The data agent: gpt-5-mini with a tested margin tool and a checked run_sql | 2026-11-19 |
 | D-033 | Cases that need the model and data run in a live suite | 2026-11-19 |
 | D-034 | The data agent reaches Azure SQL through firewall rules for its outbound IPs | 2026-11-19 |
+| D-035 | A router picks one agent per question before milestone 7 | 2026-11-20 |
+| D-036 | The policy agent reads every clause the user may read, not the top few | 2026-11-20 |
+| D-037 | Groups come only from the token; overage fails closed | 2026-11-20 |
 
 ---
 
@@ -94,6 +97,7 @@ One entry per decision: what, why, what was rejected, and what would make us rev
 - **Decision:** One search document per policy clause; hybrid + semantic query; filter `group_ids/any(...)` on the user's Entra groups from the token; `is_fixture eq false` in production.
 - **Why:** The group filter is GA on every tier. Native ACL filtering is newer and possibly still preview.
 - **Revisit if:** native permission filtering is confirmed GA and works on Free.
+- **Amended (milestone 5, D-036):** while the corpus fits the prompt, the policy agent reads every clause the user's groups may read (`search_text="*"` plus the group filter) instead of a hybrid, semantic top-k; the filter and `is_fixture eq false` are unchanged.
 
 ### D-010 Azure Table Storage
 - **Decision:** One storage account. Table `proposals` (PartitionKey = region, RowKey = proposal ID, status pending, approved or rejected) and table `conversations` (PartitionKey = user oid, RowKey = conversation ID).
@@ -320,3 +324,20 @@ One entry per decision: what, why, what was rejected, and what would make us rev
 - **Trade-off:** the app's `outboundIpAddresses` lists **181** addresses in France Central (Azure SQL allows up to 256 server-level rules). They can change, and they're shared platform IPs. Other customers' apps in the region could reach the server, but would still need an Entra token for one of its database users. That's far narrower than "Allow Azure services", which admits any Azure subnet.
 - **Watch:** after any change, a question fails with 502 and `connect failed: ... 40615` in the data agent's log; re-run the script.
 - **Revisit if** the budget allows a VNet, or at milestone 10.
+
+### D-035 A router picks one agent per question before milestone 7
+- **Decision:** the orchestrator makes one gpt-5-mini call (reasoning effort low, structured `{"agent": "data-agent" | "policy-agent"}`) to pick the agent; that agent's reply passes through unchanged, citations included. Its instructions carry tie-breaks for questions that sound like the other side: who approved a change is data, whether something was allowed is policy, "our price index" is a data figure while the price index target is policy.
+- **Why:** milestone 5 needs routing (D-029), and passing the chosen reply through can't introduce a false number. A misroute shows up in the live gate: milestone 4's 23 data cases must keep passing.
+- **Rejected:** calling both agents and merging (twice the cost, noisy answers, muddled refusal labels); keyword rules (fragile); milestone 7's full orchestration now (answer composition before scope rules and conversations exist).
+- **Result:** the live gate passed 37/37 three runs in a row after one tie-break was added (G-D09, "our price index").
+- **Revisit at milestone 7:** questions that need both agents.
+
+### D-036 The policy agent reads every clause the user may read, not the top few
+- **Decision:** per question, the policy agent loads every clause the caller's groups may read (46 clauses, about 5,000 tokens) and the model answers from them, citing clause IDs. Code keeps only citations of clauses it handed the model (brackets and stray spaces stripped) and sets the refusal: `no_data` when no clause covers the question.
+- **Why:** retrieval can't miss a relevant clause, so it can't turn into a false "no policy covers that". The security property is the same group filter.
+- **Revisit when** the corpus outgrows the prompt (about 200 clauses): hybrid and semantic search (D-009). Semantic ranker is available on Free in France Central.
+
+### D-037 Groups come only from the token; overage fails closed
+- **Decision:** `shared` v0.3.0 reads the `groups` claim from the validated token into `Caller.groups`; an overage indicator (`_claim_names` naming `groups`, or `hasgroups`) empties it and sets `groups_overage`. The policy agent answers `no_access` to an overage without reading anything, and filters on GUID-checked group IDs only. Only the policy agent's app registration requests `groupMembershipClaims: SecurityGroup`: on-behalf-of tokens follow the resource's manifest.
+- **Why:** the region and role behind a policy's audience are authorization facts; `CLAUDE.md` takes them only from the validated token, never from a model or a request body.
+- **Watch:** a user in more than 200 groups sees no policies until the policy agent learns to read groups from Microsoft Graph.
