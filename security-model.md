@@ -64,6 +64,16 @@ Sales data lives in an Azure SQL free-offer database on an Entra-only server (no
 - **Residual risk: inference through errors.** RLS filters rows, but a crafted query can still raise errors that reveal values in rows the filter hides. Microsoft documents this; for example, a divide-by-zero on a hidden row. A test user with direct SQL access can try it today. From milestone 4, `run_sql` returns a generic error and never passes SQL error text to the model or the user (eval case A-20), and milestone 11 tests it adversarially.
 - **Reference tables:** `dim_region` and `dim_store` carry `region_id` but aren't filtered; region and store lists aren't sensitive. Every other `dbo` table with `region_id` is filtered automatically (`rls.regional_tables()`).
 
+## Data agent: run_sql
+
+- **Who reads:** the user. The data agent exchanges the caller's token for Azure SQL (OBO) for every query, so RLS filters by the signed-in user. The data agent's own identity calls only the model (Foundry, keyless) and never the database.
+- **What it may run:** margins through one tested, parameterized query (`margin`); anything else as one SELECT, parsed with sqlglot and checked against the eight pricing tables, with no impossible date literals (`domain/sql_guard.py`). The database is the second layer: test users hold only SELECT on `dbo` and are denied the `rls` schema.
+- **No shared connections:** pooling is off, and every query opens and closes its own connection with its own token.
+- **Errors:** errors raised while reading rows (divide by zero, conversions) reach the model and the user only as `query failed`. Errors raised before any row is read (syntax, unknown names) go back to the model, because their text names only what the query wrote. Logs keep the exception type for queries, and the text of connect failures (server, client IP, error number). The residual risk of inference through errors (above) remains: error vs no error is one bit per query (milestone 11).
+- **Region awareness:** a query run as the user finds the regions RLS shows. The model is told them, and code sets the refusal label from them and the facts the model reports (`domain/refusal.py`). It's a label, never a permission: the rows are filtered by the database either way.
+- **Agent output is untrusted:** the reply travels as the shared `AgentReply` contract, and the orchestrator validates it (fields, refusal values, 4,000 characters). Anything else becomes a 502.
+- **Network:** the SQL server admits the laptop and the data agent's outbound IPs (181 shared platform addresses, D-034); never "Allow Azure services".
+
 ## Network
 
 All apps share one Container Apps environment with peer-to-peer encryption on. Only the orchestrator has external ingress; the data-agent answers only inside the environment (404 from outside). Container Apps authenticates apps to each other but doesn't authorize them; the token checks above do.

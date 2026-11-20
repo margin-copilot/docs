@@ -56,7 +56,7 @@ Docs rule: cross-cutting behavior (architecture, identity, decisions, guides) li
 - Every service validates every request with the `shared` security module: signature (JWKS), issuer = our tenant, `aud` = this service, required `scp`, and the calling app (`azp`) on an allow-list. Reject otherwise. Never write a second token check.
 - Never take authorization facts (region, role, approver) from model output or request bodies. Only from the validated token.
 - Agents can only create **pending** drafts. Approve and reject exist only in proposals-api, never in an agent.
-- `run_sql`: one SELECT statement, parsed and checked against an allowed-table list, row cap, timeout. No pooled ODBC connections shared across users.
+- `run_sql`: one SELECT statement, parsed and checked against an allowed-table list, row cap, timeout, generic errors only (the model and the user never see database error text). No pooled ODBC connections shared across users.
 - Treat agent output as untrusted data at every boundary: validate against the shared contracts and enforce size limits.
 - Agent services keep internal ingress. The Container Apps environment keeps peer-to-peer encryption on.
 - Never log tokens, raw SQL results or full prompts with user data.
@@ -72,7 +72,7 @@ Docs rule: cross-cutting behavior (architecture, identity, decisions, guides) li
 - Match the surrounding code. Comments only where the code can't say it.
 - Commits use the owner's GitHub no-reply email. Every repo has the baseline from `docs/templates/` (gitleaks pre-commit hook, CI secret scan, README).
 
-Pinned versions (checked 2026-11-16; re-check before pinning): a2a-sdk 1.3.0 (keep ≥1.2.3), starlette 1.10.0, sse-starlette 3.6.0, uvicorn 0.54.0, httpx 0.28.1, PyJWT 2.15.1, cryptography 50.0.2, msal 1.39.0, azure-identity 1.27.0, pytest 9.2.0, pytest-asyncio 1.4.1, ruff 0.17.3, uv 0.13.6 (CI: astral-sh/setup-uv@v10.3.3), gitleaks 8.30.1. For later milestones: agent-framework 1.26.0, agent-framework-foundry 1.16.2, agent-framework-a2a 1.0.0b261112, azure-ai-projects 2.11.0, azure-ai-evaluation 1.18.12, mssql-python 1.17.0, azure-search-documents 12.1.0, openai 3.51.0.
+Pinned versions (checked 2026-11-16; re-check before pinning): a2a-sdk 1.3.0 (keep ≥1.2.3), starlette 1.10.0, sse-starlette 3.6.0, uvicorn 0.54.0, httpx 0.28.1, PyJWT 2.15.1, cryptography 50.0.2, msal 1.39.0, azure-identity 1.27.0, pytest 9.2.0, pytest-asyncio 1.4.1, ruff 0.17.3, uv 0.13.6 (CI: astral-sh/setup-uv@v10.3.3), gitleaks 8.30.1, agent-framework-core 1.26.0 (not the `agent-framework` meta package, which pulls ~40 provider packages), agent-framework-foundry 1.16.2, mssql-python 1.17.0, pydantic 2.14.3, sqlglot 30.29.0, msal-extensions 1.3.1. For later milestones: agent-framework-a2a 1.0.0b261112, azure-ai-projects 2.11.0, azure-ai-evaluation 1.18.12, azure-search-documents 12.1.0, openai 3.51.0.
 
 ## Workflow
 

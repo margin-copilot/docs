@@ -35,6 +35,9 @@ One entry per decision: what, why, what was rejected, and what would make us rev
 | D-029 | Eval cases first, gated by milestone; the chat response contract | 2026-11-19 |
 | D-030 | Plain-Python generator | 2026-11-19 |
 | D-031 | Azure SQL free offer for the data, with T-SQL RLS | 2026-11-19 |
+| D-032 | The data agent: gpt-5-mini with a tested margin tool and a checked run_sql | 2026-11-19 |
+| D-033 | Cases that need the model and data run in a live suite | 2026-11-19 |
+| D-034 | The data agent reaches Azure SQL through firewall rules for its outbound IPs | 2026-11-19 |
 
 ---
 
@@ -236,3 +239,84 @@ One entry per decision: what, why, what was rejected, and what would make us rev
   - `dim_store` carries `region_id` but isn't filtered: the store list isn't sensitive.
   - Milestone 4 adds the data-agent's Azure SQL consent for OBO.
   - RLS doesn't stop inference through errors (Learn: "carefully crafted queries"). `run_sql` must return generic errors only, from milestone 4 (eval case A-20).
+
+### D-032 The data agent: gpt-5-mini with a tested margin tool and a checked `run_sql`
+- **Decision:** data-agent is an Agent Framework agent (`agent-framework-core` 1.26.0, `FoundryChatClient`) on a Foundry project's gpt-5-mini deployment (`2025-08-07`, GlobalStandard, reasoning effort medium). It calls the model keylessly with its managed identity, which holds the Foundry User role; the account has local auth disabled.
+  - **`margin(start, end, region?, category?, sku?)`:** net sales, cost of goods and margin % from one tested query. The arguments are checked and bound as parameters, and the query always joins the product table for the category. The model must use it for every margin figure.
+  - **`run_sql`:** sqlglot parses the SQL (T-SQL). The guard accepts one SELECT or set operation over the eight pricing tables in `dbo`. No `INTO`, `APPLY`, temp tables, table-valued functions, other schemas, 3- or 4-part names, or impossible date literals (2026-02-29).
+  - **Connections:** each query exchanges the caller's token for Azure SQL (OBO) and opens its own connection: pooling off, a 30-second timeout, 200 rows, returned as CSV.
+  - **What the model sees:**
+    - rows;
+    - the guard's reason;
+    - errors raised before any row is read (syntax, unknown column or table, GROUP BY): their text names only what the query wrote;
+    - otherwise `query failed`, after which it rewrites the query more simply, at most twice.
+    It never sees the text of errors raised while reading rows (A-20).
+  - **The refusal label is set by code:**
+    - before the model runs, `SELECT DISTINCT region_id FROM dbo.fact_sales` as the user finds the regions RLS allows;
+    - the model reports `regions_asked` and `found_data` (a figure the question asks for was found);
+    - `domain/refusal.py` turns those into `no_access`, `no_data` or none, the same way every time;
+    - a user who sees no region gets `no_access` without a model call;
+    - `out_of_scope` is left to the orchestrator's scope rules (milestone 7).
+  - **The reply:** the shared `AgentReply` (pydantic, at most 4,000 characters, no unknown fields), which the orchestrator validates again.
+  - **Limits:** 8 model round trips and 8 tool calls per question. Failures reach the caller as the fixed message `data-agent failed`.
+  - The milestone-1 `whoami` tool and its Graph grant are removed.
+- **Why:**
+  - The `run_sql` rule in `CLAUDE.md`. RLS on the user's own token stays the authorization; the guard and the tools limit the query's shape, not which rows it sees.
+  - Database errors raised while reading rows can reveal rows RLS hides (A-20).
+  - **Live runs showed where a model can't be trusted to be consistent, and each gap moved into code:**
+    - the model's own refusal labels wobbled on right answers;
+    - its hand-written SQL once forgot the product join, a false number;
+    - it gave up on its own SQL typos it couldn't see;
+    - it repeated an impossible February date that only fails at run time.
+- **Rejected:**
+  - Foundry prompt agents: service-managed, and per-user OBO tools need our code anyway.
+  - The `agent-framework` meta package: about 40 provider packages, many of them beta.
+  - Showing errors raised while reading rows to the model.
+  - A database view of the user's own mapping: a data change, when the probe works on the existing tables.
+  - Gating on a pass rate: the owner accepts no regressions or false results (D-033).
+- **Model choice is provisional:** made by constraints, not a comparison.
+  - On the free trial only gpt-5-mini, gpt-4.1-mini and o4-mini (retiring) have chat quota.
+  - gpt-5-mini is a reasoning model with tools and structured output, at $0.25 / $2.00 per million tokens, supported until July 2027.
+  - The roadmap's open question (gpt-5-mini or gpt-6-luna, by eval scores and cost) stays open until the account upgrade; the live suite is how to settle it.
+- **How it was calibrated:**
+  - **Prompt rules, from runs 1 to 3 (14/22, then 6/8, then 2/2):**
+    - read `price_history`;
+    - compare before and after a change's date, with a clean "before" period, for every figure;
+    - "current" means the latest data;
+    - name products by name;
+    - "above normal" is a ratio;
+    - number formats;
+    - everyday product names;
+    - the headline figure first.
+  - **Then the structural changes above,** until three consecutive full runs passed 22/22.
+  - No expected answer is written into the prompt. One calendar fact (the Ramadan 2026 dates) is; a calendar table in the database would be the general fix.
+- **Watch:**
+  - **The schema is described twice:** tables in the `data` repo, their description in the prompt and the guard. A new table fails closed (the guard rejects it). A column whose meaning changes would give numbers that look right but aren't. The fix is column descriptions in the database, read at startup.
+  - The unit tests' scripted model uses Agent Framework's private `_inner_get_response`; re-check it on upgrades.
+  - Error vs no-error still leaks one bit per query (milestone 11).
+  - Model answers drift between runs, so every milestone re-runs its live gate.
+
+### D-033 Cases that need the model and data run in a live suite
+- **Decision:** cases carry `suite = "ci"` (the default) or `"live"`.
+  - Live cases are skipped in CI. `live/run_cases.py` runs them on the laptop against the deployed system, with one browser sign-in per test user, and prints every answer.
+  - The milestone gate (owner, 2026-11-20: no regressions or false results): every live case up to `CURRENT_MILESTONE` passes in **three consecutive full runs**. A single passing run can be luck.
+  - CI keeps the plumbing and security cases on fakes, plus every service's unit tests (the data agent's against a scripted model).
+  - All 22 milestone-4 cases are live.
+- **Why:**
+  - Their answers depend on the real model and the real row-level security; a fake would test the fake.
+  - CI can't sign in as test users (MFA, D-019).
+  - A CI model would need GitHub OIDC, a Foundry role and a copy of the data, and would cost money on every push.
+- **Rejected:** Foundry through OIDC in CI with a SQLite copy of the data (diverges from T-SQL RLS); scripted model answers in the eval suite (prove nothing).
+- **Closes** D-029's open question, and milestone-2 deferred items 2–4: fake-mode factories and persona UPNs are no longer needed.
+- **Sign-ins are remembered:** each test user signs in through the browser once. `msal-extensions` keeps the tokens encrypted in the OS keychain (`~/.margin-copilot/msal-token-cache.bin`, outside every repo; delete it to forget them), so later runs are silent. A token is used only for the account whose name matches the case's persona.
+- **Revisit at milestone 10:** deploys gated by evals would need non-interactive test-user tokens for a scheduled live run.
+
+### D-034 The data agent reaches Azure SQL through firewall rules for its outbound IPs
+- **Decision:** `infra/scripts/sql-allow-apps.sh` adds one SQL firewall rule per outbound IP of the data-agent container app (`properties.outboundIpAddresses`) and removes stale ones. Run it after every apps deploy. The laptop's rule stays. No "Allow Azure services".
+- **Why:**
+  - A VNet-integrated environment with a `Microsoft.Sql` service endpoint means recreating the environment, and it bills managed resources (a static IP and a load balancer): about $22–40 a month even at zero replicas.
+  - A private endpoint adds about $7.30 a month on top of that VNet. Both break the $20 budget.
+  - Entra-only authentication, per-user OBO and RLS are the real controls; the IP rules only narrow who can reach the login endpoint.
+- **Trade-off:** the app's `outboundIpAddresses` lists **181** addresses in France Central (Azure SQL allows up to 256 server-level rules). They can change, and they're shared platform IPs. Other customers' apps in the region could reach the server, but would still need an Entra token for one of its database users. That's far narrower than "Allow Azure services", which admits any Azure subnet.
+- **Watch:** after any change, a question fails with 502 and `connect failed: ... 40615` in the data agent's log; re-run the script.
+- **Revisit if** the budget allows a VNet, or at milestone 10.
