@@ -36,7 +36,7 @@ All repos belong to the GitHub organization **margin-copilot** (`github.com/marg
 | web | public | React + Vite + MSAL.js: chat and approvals screens |
 | orchestrator | public | Orchestrator agent, chat API, conversation pointers |
 | data-agent | public | A2A server, `run_sql` |
-| policy-agent | public | A2A server, `search_policies` |
+| policy-agent | public | A2A server: cited answers from the policy clauses the caller's groups may read |
 | action-agent | public | A2A server, `draft_proposal` |
 | proposals-api | public | Approval rules, Table Storage |
 | shared | public | Pydantic contracts + security module (token check, OBO, request context). Installed from a git tag. |

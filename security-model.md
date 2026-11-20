@@ -79,7 +79,7 @@ Sales data lives in an Azure SQL free-offer database on an Entra-only server (no
 - **Who reads:** the policy agent's own identity reads the AI Search index (Search Index Data Reader), always filtered by the caller's groups from the validated token (D-037). Search is keyless (`disableLocalAuth`); the admin who pushes the corpus holds the only write roles.
 - **The filter:** `group_ids/any(g: search.in(g, '<ids>', ',')) and is_fixture eq false`. Group IDs reach it only after GUID parsing, so nothing else reaches OData. Test fixtures (TEST-01, milestone 11) never reach production queries.
 - **Restricted documents:** PP-05-N (North supplier terms) is indexed for the North and pricing directors, PP-06 (margin floors) for directors only. Managers don't learn they exist: a question about them gets "no policy you can open covers that".
-- **The model can't widen access:** it sees only the clauses the filter returned, code drops any citation it wasn't given, and code sets the refusal. A token whose group list overflowed gets nothing (`no_access`).
+- **The model can't widen access:** it sees only the clauses the filter returned, and code drops any citation it wasn't given (at most 12 kept). Code maps the model's `found_policy` to the refusal, and an answer whose citations were all dropped becomes "no policy you can open covers that" (`no_data`). A token whose group list overflowed gets nothing (`no_access`).
 
 ## Network
 

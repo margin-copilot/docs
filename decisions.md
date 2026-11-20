@@ -333,11 +333,13 @@ One entry per decision: what, why, what was rejected, and what would make us rev
 - **Revisit at milestone 7:** questions that need both agents.
 
 ### D-036 The policy agent reads every clause the user may read, not the top few
-- **Decision:** per question, the policy agent loads every clause the caller's groups may read (46 clauses, about 5,000 tokens) and the model answers from them, citing clause IDs. Code keeps only citations of clauses it handed the model (brackets and stray spaces stripped) and sets the refusal: `no_data` when no clause covers the question.
+- **Decision:** per question, the policy agent loads every clause the caller's groups may read (46 clauses, about 5,000 tokens) and the model answers from them, citing clause IDs. Code keeps only citations of clauses it handed the model (brackets and stray spaces stripped, at most 12) and sets the refusal: `no_data` when no clause covers the question, or when an answer cites nothing the caller may read.
 - **Why:** retrieval can't miss a relevant clause, so it can't turn into a false "no policy covers that". The security property is the same group filter.
 - **Revisit when** the corpus outgrows the prompt (about 200 clauses): hybrid and semantic search (D-009). Semantic ranker is available on Free in France Central.
 
 ### D-037 Groups come only from the token; overage fails closed
 - **Decision:** `shared` v0.3.0 reads the `groups` claim from the validated token into `Caller.groups`; an overage indicator (`_claim_names` naming `groups`, or `hasgroups`) empties it and sets `groups_overage`. The policy agent answers `no_access` to an overage without reading anything, and filters on GUID-checked group IDs only. Only the policy agent's app registration requests `groupMembershipClaims: SecurityGroup`: on-behalf-of tokens follow the resource's manifest.
 - **Why:** the region and role behind a policy's audience are authorization facts; `CLAUDE.md` takes them only from the validated token, never from a model or a request body.
-- **Watch:** a user in more than 200 groups sees no policies until the policy agent learns to read groups from Microsoft Graph.
+- **Watch:**
+  - A user in more than 200 groups sees no policies until the policy agent learns to read groups from Microsoft Graph.
+  - Group changes reach tokens only as they renew (about an hour): removing someone from a group isn't instant.
