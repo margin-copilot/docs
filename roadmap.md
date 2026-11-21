@@ -49,7 +49,7 @@ Dockerfile  pyproject.toml  .env.example  .github/workflows/{ci,build}.yml (ci =
 | 3 | Data + RLS on the Azure SQL free offer (D-031; Fabric trial refused) | 8 | north.mgr and south.mgr get different rows from the same query; story checks pass — done 2026-11-19 |
 | 4 | data-agent: `run_sql` over Azure SQL, SQL guard, no error text from reading rows, OBO, `mssql-python`; orchestrator reports `agents` and `refusal`; evals wiring for data cases (D-029) | 8 | Data and region eval cases pass in the live suite against Azure SQL, three runs in a row (D-033) — done 2026-11-20 |
 | 5 | policy-agent: policy Markdown, indexer, group filter; orchestrator routes to it and reports `citations`; evals wiring | 7 | Groundedness and access cases pass in the live suite (37 cases, three runs in a row) — done 2026-11-20 |
-| 6 | proposals-api + action-agent; orchestrator routes to it; D-012 approval boundaries tested in proposals-api | 8 | Tests show no approval path without the right role and region |
+| 6 | proposals-api + action-agent; orchestrator routes to it; D-012 approval boundaries tested in proposals-api | 8 | Tests show no approval path without the right role and region — done 2026-11-21 (42 live cases three runs in a row; live approval check 12/12) |
 | 7 | orchestrator: tools over A2A, conversations, scope rules, chat API; conversation-resume hijack eval case | 8 | End-to-end eval suite passes |
 | 8 | web: MSAL sign-in, chat, approvals | 8 | Demo question works in the browser for north.mgr and south.mgr |
 | 9 | Observability and cost: traces across services, cost per question | 4 | Every eval run reports cost per question |

@@ -81,6 +81,21 @@ Sales data lives in an Azure SQL free-offer database on an Entra-only server (no
 - **Restricted documents:** PP-05-N (North supplier terms) is indexed for the North and pricing directors, PP-06 (margin floors) for directors only. Managers don't learn they exist: a question about them gets "no policy you can open covers that".
 - **The model can't widen access:** it sees only the clauses the filter returned, and code drops any citation it wasn't given (at most 12 kept). Code maps the model's `found_policy` to the refusal, and an answer whose citations were all dropped becomes "no policy you can open covers that" (`no_data`). A token whose group list overflowed gets nothing (`no_access`).
 
+## Proposals: drafts and approvals
+
+- **Agents only draft.** The action agent's app is on proposals-api's draft allow-list only. Listing, approving and rejecting accept only apps people use (the CLI now, the web app at milestone 8). Each route group has its own instance of the shared token check, so an agent's token never reaches a decision.
+- **Every fact behind a decision is verified by proposals-api (D-039):**
+  - role and region come from the `groups` claim;
+  - tier and current price come from Azure SQL, read as the user;
+  - the percent is computed exactly, and the approver needed is stored at draft time.
+- **Fail closed:**
+  - a group overage, no region group, or two region groups without the directors group get 403;
+  - a price row-level security hides is "no current price", never a fallback;
+  - another region's manager learns nothing about a proposal, not even whether it exists.
+- **One decision per proposal:** a decided proposal answers 409, and every update carries the entity's ETag, so two people can't decide it at once.
+- **Storage is keyless:** shared keys are off, and only proposals-api's identity (Storage Table Data Contributor) can touch the `proposals` table.
+- **Known limits:** approval changes the proposal's status, not prices in the database; the price is the one at draft time.
+
 ## Network
 
 All apps share one Container Apps environment with peer-to-peer encryption on. Only the orchestrator has external ingress; the data-agent answers only inside the environment (404 from outside). Container Apps authenticates apps to each other but doesn't authorize them; the token checks above do.

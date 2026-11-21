@@ -41,6 +41,8 @@ One entry per decision: what, why, what was rejected, and what would make us rev
 | D-035 | A router picks one agent per question before milestone 7 | 2026-11-20 |
 | D-036 | The policy agent reads every clause the user may read, not the top few | 2026-11-20 |
 | D-037 | Groups come only from the token; overage fails closed | 2026-11-20 |
+| D-038 | The action agent extracts; code drafts and words the reply | 2026-11-21 |
+| D-039 | proposals-api decides approvals from what it can verify | 2026-11-21 |
 
 ---
 
@@ -331,6 +333,7 @@ One entry per decision: what, why, what was rejected, and what would make us rev
 - **Rejected:** calling both agents and merging (twice the cost, noisy answers, muddled refusal labels); keyword rules (fragile); milestone 7's full orchestration now (answer composition before scope rules and conversations exist).
 - **Result:** the live gate passed 37/37 three runs in a row after one tie-break was added (G-D09, "our price index").
 - **Revisit at milestone 7:** questions that need both agents.
+- **Amended (milestone 6):** four routes. `action-agent` drafts price changes. `approvals` (approve, reject, apply or list proposals) gets a fixed answer from code pointing to the approval screen, and no agent is called (A-16, A-17). A role claimed in the message changes nothing.
 
 ### D-036 The policy agent reads every clause the user may read, not the top few
 - **Decision:** per question, the policy agent loads every clause the caller's groups may read (46 clauses, about 5,000 tokens) and the model answers from them, citing clause IDs. Code keeps only citations of clauses it handed the model (brackets and stray spaces stripped, at most 12) and sets the refusal: `no_data` when no clause covers the question, or when an answer cites nothing the caller may read.
@@ -343,3 +346,30 @@ One entry per decision: what, why, what was rejected, and what would make us rev
 - **Watch:**
   - A user in more than 200 groups sees no policies until the policy agent learns to read groups from Microsoft Graph.
   - Group changes reach tokens only as they renew (about an hour): removing someone from a group isn't instant.
+
+### D-038 The action agent extracts; code drafts and words the reply
+- **Decision:**
+  - gpt-5-mini fills `{is_draft, product, region, new_price, change_pct}` (structured output, reasoning low, no tools).
+  - Code sends the draft to proposals-api (`POST /drafts`, on-behalf-of) and writes the reply from fixed sentences built from the stored proposal: product, region, old → new price, percent, who may approve, and the clause.
+  - The manager sentence never contains "director", so a case expecting the director can't pass on the wrong approver.
+- **Why:** a reply the model writes could call a draft approved or misstate the percent or the approver: a false result. Fixed wording from the stored proposal can't.
+- **Rejected:** a tool-calling agent writing its own reply.
+- **Result:** the live gate passed 42/42 three runs in a row on the first gate, with no case-wording changes.
+
+### D-039 proposals-api decides approvals from what it can verify
+- **Decision:**
+  - **Role and region** come from the token's `groups` claim (the D-037 pattern, `groupMembershipClaims` on the proposals-api app), mapped by `REGION_GROUPS`: north, center, south and directors, four distinct group IDs.
+  - **Tier and current price** come from Azure SQL, read as the user (on-behalf-of, row-level security). A draft request can't carry either.
+  - **The percent** is exact `Decimal` arithmetic. The approver needed is decided once, at draft time, and stored.
+  - **Two caller allow-lists in one service:** drafts accept only the action agent's app; listing and decisions accept only apps people use (the CLI now, the web app at milestone 8). These are two instances of the shared token check, not a second check.
+- **Conservative where checks are missing:**
+  - every price cut needs the director (PP-04 §3.5's margin-floor check needs PP-06 data);
+  - fresh produce follows its tier (PP-04 §3.4's weekly repricing needs a price-index check).
+- **Hard caps:** a draft over Tier A +3% (§3.1) or Tier B +10% (§3.2) is refused with the clause, since nobody may approve it.
+- **Groups vs USER_REGIONS** (milestone 3's open item): Entra groups are the source of truth for roles. SQL's mapping must also allow the price read, so a disagreement fails closed.
+- **Known limits:**
+  - approval changes the proposal's status, not the database's prices;
+  - the price is the one at draft time;
+  - the proposer is stored as an object ID.
+- **Why:** who may approve is an authorization decision, so `CLAUDE.md` allows it only from the validated token and data the service reads itself, never from a model or a request body.
+
