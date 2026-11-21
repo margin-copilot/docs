@@ -99,6 +99,18 @@ Sales data lives in an Azure SQL free-offer database on an Entra-only server (no
   - the price is the one at draft time;
   - PP-04 §2.2 (30-day rule), §2.3 (reason code) and §3.1's price index aren't checked by code. The approver checks them.
 
+## Conversations
+
+- **Ownership is structural:** turns are stored under the validated token's `oid` (PartitionKey), so a query can only read the caller's own conversations (D-041).
+- **One answer for every miss:** an unknown, someone else's, malformed or expired conversation ID gets 404 `conversation not found`, which reveals nothing.
+- **History only from the store:** the body accepts `question` and `conversation_id` only. A follow-up is rewritten into a standalone question, and the agents enforce RLS, group trimming and approval rules on that question as on any other.
+- **What's kept:** each turn's question and answer, for 7 days of use. The orchestrator's identity holds Storage Table Data Contributor on this table only.
+
+## Composed answers
+
+- **Numbers come from the agents:** when a question needs the data and policy agents, the composed answer may only contain numbers that appear in their replies or the question. Code checks this, retries once, and otherwise shows the replies side by side (D-040).
+- **Code sets the labels:** citations, `agents` and `refusal` come from the agents' replies, never from the composer.
+
 ## Network
 
 All apps share one Container Apps environment with peer-to-peer encryption on. Only the orchestrator and proposals-api have external ingress (people reach them; proposals-api's routes still accept only the allow-listed apps). The data, policy and action agents answer only inside the environment (404 from outside). Container Apps authenticates apps to each other but doesn't authorize them; the token checks above do.

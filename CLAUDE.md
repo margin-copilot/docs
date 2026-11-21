@@ -16,7 +16,7 @@ The master copy of this file is `docs/CLAUDE.md` (the docs repo). The workspace 
 
 ```
 Browser: web SPA (Static Web Apps, MSAL sign-in)
-  → orchestrator-agent   [Container App, external ingress]   chat API; a router picks one agent per question (D-035)
+  → orchestrator-agent   [Container App, external ingress]   chat API; the router plans: one agent passes through, two are composed and number-checked (D-040); conversations under the owner's oid (D-041)
       ─A2A→ data-agent   [internal]  run_sql → Azure SQL free-offer database (T-SQL RLS, user's OBO token)
       ─A2A→ policy-agent [internal]  reads the clauses the caller's groups may read → AI Search Free (D-036)
       ─A2A→ action-agent [internal]  extracts the draft; code sends it to proposals-api (PENDING drafts only, D-038)

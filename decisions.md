@@ -43,6 +43,8 @@ One entry per decision: what, why, what was rejected, and what would make us rev
 | D-037 | Groups come only from the token; overage fails closed | 2026-11-20 |
 | D-038 | The action agent extracts; code drafts and words the reply | 2026-11-21 |
 | D-039 | proposals-api decides approvals from what it can verify | 2026-11-21 |
+| D-040 | Plan, then call: one agent passes through, several are composed and number-checked | 2026-11-21 |
+| D-041 | Our own conversation history in Table Storage, under the owner's oid | 2026-11-21 |
 
 ---
 
@@ -62,6 +64,7 @@ One entry per decision: what, why, what was rejected, and what would make us rev
 - **Why:** Compound questions (data + policy + action) get one coherent, citable answer. In Python, tool approvals raised inside a child agent can't be resumed through the parent and "fail closed" (MAF "Agents as Tools" page). Approval as an endpoint is durable for days, needs no checkpoint store, and keeps the model away from commits.
 - **Rejected:** Handoff orchestration. It returns control to the user whenever an agent doesn't hand off, splits answers across agents, and needs durable checkpoints for approvals.
 - **Revisit if:** evals show the orchestrator routes badly and handoff rules would fix it.
+- **Amended (milestone 7, D-040):** the orchestrator plans each question and code calls the agents; a model loop over tools was rejected.
 
 ### D-004 One service per agent, plus proposals-api
 - **Decision:** Five Container Apps: orchestrator-agent, data-agent, policy-agent, action-agent, proposals-api. Hexagonal inside each.
@@ -112,6 +115,7 @@ One entry per decision: what, why, what was rejected, and what would make us rev
 - **Why:** Least code. MAF docs warn that service-side IDs aren't authorization boundaries, so ownership is checked on every resume.
 - **Rule:** every number in an answer comes from a tool call in the current turn.
 - **Revisit if:** we need exact control over retention, in which case we'd write our own `HistoryProvider`.
+- **Amended (milestone 7, D-041):** history lives in our own Table Storage table under the owner's oid, not in Foundry. The number rule is enforced in code for composed answers (D-040).
 
 ### D-012 Approval rules
 - **Decision:** proposals-api decides who can approve: a manager can approve their own Tier B drafts up to +4% and Tier C up to +8%; the pricing director approves everything else and every Tier A change. Region and role come from the token.
@@ -205,6 +209,11 @@ One entry per decision: what, why, what was rejected, and what would make us rev
   - Golden wording may be stricter than a correct answer; each milestone reviews its cases against real answers before bumping `CURRENT_MILESTONE`.
   - Golden cases need a model, and milestone 4 decides whether CI gets one keylessly or golden cases run only in the live suite.
   - Groundedness is checked through required facts and citations. Model-judged scores (azure-ai-evaluation: groundedness, tool-call accuracy) join the live suite in milestone 7.
+- **Amended (milestone 7):**
+  - **Model-judged scores** move to milestone 9. D-011's number rule is enforced in production by code for composed answers (D-040).
+  - **G-C01** expects the +6% cost rise (or the new 5.62 MAD cost) and the 4% limit, not "7.25", which no data row or clause contains.
+  - **A-14** waits for the TEST-01 fixture (milestone 11).
+  - **A-21** (a resume of another user's conversation gets 404) runs live with `conversation_of`.
 - **Amended after the milestone 2 review:**
   - **Server errors:** a 5xx where a case expects an answer is a `SystemFault`, never an expected failure. A broken downstream can't hide behind pending cases.
   - **Number matching:** numbers in `contains`/`not_contains` match whole (`0%` isn't in `30%`, `21.3` isn't in `121.3`). Words still match inside longer words.
@@ -334,6 +343,7 @@ One entry per decision: what, why, what was rejected, and what would make us rev
 - **Result:** the live gate passed 37/37 three runs in a row after one tie-break was added (G-D09, "our price index").
 - **Revisit at milestone 7:** questions that need both agents.
 - **Amended (milestone 6):** four routes. `action-agent` drafts price changes. `approvals` (approve, reject, apply or list proposals) gets a fixed answer from code pointing to the approval screen, and no agent is called (A-16, A-17). A role claimed in the message changes nothing.
+- **Amended (milestone 7, D-040):** six routes, one per question: `data-agent`, `policy-agent`, `data-and-policy`, `action-agent`, `approvals` and `out_of_scope`. A two-field plan (`route` plus an agent list) and policy examples placed inside the approvals line both sent policy questions to approvals in the gate. The single-choice shape fixed that.
 
 ### D-036 The policy agent reads every clause the user may read, not the top few
 - **Decision:** per question, the policy agent loads every clause the caller's groups may read (46 clauses, about 5,000 tokens) and the model answers from them, citing clause IDs. Code keeps only citations of clauses it handed the model (brackets and stray spaces stripped, at most 12) and sets the refusal: `no_data` when no clause covers the question, or when an answer cites nothing the caller may read.
@@ -374,4 +384,26 @@ One entry per decision: what, why, what was rejected, and what would make us rev
   - the proposer is stored as an object ID;
   - **policy checks proposals-api doesn't make:** PP-04 §2.2 (one increase per product and region in 30 days), §2.3 (a reason code), and §3.1's price index ≤ 102 for Tier A. The person approving checks these.
 - **Why:** who may approve is an authorization decision, so `CLAUDE.md` allows it only from the validated token and data the service reads itself, never from a model or a request body.
+
+### D-040 Plan, then call: one agent passes through, several are composed and number-checked
+- **Decision:** One gpt-5-mini call routes each question to one of six routes: `data-agent`, `policy-agent`, `data-and-policy`, `action-agent`, `approvals`, `out_of_scope`. Code calls the chosen agents concurrently over A2A, with OBO.
+  - **One agent:** its reply passes through unchanged.
+  - **Two agents:** a composer call writes one answer from their replies. Code checks that every number in it appears in a reply or the question, retries once naming the ungrounded numbers, and otherwise returns the replies side by side.
+  - Citations, `agents` and `refusal` are set by code. The refusal label applies only when every agent refused; `no_access` wins.
+  - **Approvals and out-of-scope questions** get fixed answers, with no agent called. No route pairs the action agent with another.
+- **Why:** milestones 4–6's single-agent answers stay exactly as tested. A composed answer can't carry a number no agent gave (D-011), and drafts happen only when asked for.
+- **Rejected:** an orchestrator agent looping over tools. It would rewrite every answer, cost more tokens, and nothing in the cases needs its sequencing.
+- **Result:** the live gate passed 52/52 three runs in a row, after the calibration noted in D-035's amendment.
+
+### D-041 Our own conversation history in Table Storage, under the owner's oid
+- **Decision:**
+  - Turns live in the `conversations` table: PartitionKey = the validated token's `oid`, RowKey = conversation ID plus time.
+  - Another user's conversation is simply not found. So are unknown, malformed and expired ones, all with the same 404.
+  - A follow-up is rewritten into a standalone question from the last 10 turns (a condenser call), and agents stay stateless.
+  - Conversations expire 7 days after their first turn.
+  - The request body accepts only `question` and `conversation_id`, so history never comes from the client.
+  - The orchestrator's identity holds a data role on this table only.
+- **Why:** ownership is structural, not a check that could be forgotten. Exact control over what is kept, with no new service holding user answers.
+- **Rejected:** Foundry-managed conversations. That's another service and SDK surface, and ownership would still be ours.
+- **Known limit:** expired turns stay in the table until a cleanup job exists. The data is synthetic.
 
