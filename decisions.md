@@ -388,12 +388,13 @@ One entry per decision: what, why, what was rejected, and what would make us rev
 ### D-040 Plan, then call: one agent passes through, several are composed and number-checked
 - **Decision:** One gpt-5-mini call routes each question to one of six routes: `data-agent`, `policy-agent`, `data-and-policy`, `action-agent`, `approvals`, `out_of_scope`. Code calls the chosen agents concurrently over A2A, with OBO.
   - **One agent:** its reply passes through unchanged.
-  - **Two agents:** a composer call writes one answer from their replies. Code checks that every number in it appears in a reply or the question, retries once naming the ungrounded numbers, and otherwise returns the replies side by side.
+  - **Two agents:** a composer call writes one answer from their replies. Code checks that every number in it appears in a reply or in what the user typed: a percentage against a percentage, clause IDs as IDs, never as numbers. It retries once naming what's ungrounded, and otherwise returns the replies side by side, as it does when the composer fails.
+  - **Known gaps:** number words and date parts reused as figures aren't caught. A turn has 230 seconds; past that it's a 502 and nothing is stored.
   - Citations, `agents` and `refusal` are set by code. The refusal label applies only when every agent refused; `no_access` wins.
   - **Approvals and out-of-scope questions** get fixed answers, with no agent called. No route pairs the action agent with another.
 - **Why:** milestones 4–6's single-agent answers stay exactly as tested. A composed answer can't carry a number no agent gave (D-011), and drafts happen only when asked for.
 - **Rejected:** an orchestrator agent looping over tools. It would rewrite every answer, cost more tokens, and nothing in the cases needs its sequencing.
-- **Result:** the live gate passed 52/52 three runs in a row, after the calibration noted in D-035's amendment.
+- **Result:** the live gate passed 52/52 three runs in a row, after the calibration noted in D-035's amendment, and 53/53 again after the final-review fixes (with G-V01, a follow-up in the owner's own conversation).
 
 ### D-041 Our own conversation history in Table Storage, under the owner's oid
 - **Decision:**
