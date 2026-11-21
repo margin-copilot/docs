@@ -354,7 +354,7 @@ One entry per decision: what, why, what was rejected, and what would make us rev
   - The manager sentence never contains "director", so a case expecting the director can't pass on the wrong approver.
 - **Why:** a reply the model writes could call a draft approved or misstate the percent or the approver: a false result. Fixed wording from the stored proposal can't.
 - **Rejected:** a tool-calling agent writing its own reply.
-- **Result:** the live gate passed 42/42 three runs in a row on the first gate, with no case-wording changes.
+- **Result:** the live gate passed 42/42 three runs in a row on the first gate, with no case-wording changes, and again after the final-review fixes.
 
 ### D-039 proposals-api decides approvals from what it can verify
 - **Decision:**
