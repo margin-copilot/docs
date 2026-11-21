@@ -94,11 +94,14 @@ Sales data lives in an Azure SQL free-offer database on an Entra-only server (no
   - another region's manager learns nothing about a proposal, not even whether it exists.
 - **One decision per proposal:** a decided proposal answers 409, and every update carries the entity's ETag, so two people can't decide it at once.
 - **Storage is keyless:** shared keys are off, and only proposals-api's identity (Storage Table Data Contributor) can touch the `proposals` table.
-- **Known limits:** approval changes the proposal's status, not prices in the database; the price is the one at draft time.
+- **Known limits:**
+  - approval changes the proposal's status, not prices in the database;
+  - the price is the one at draft time;
+  - PP-04 §2.2 (30-day rule), §2.3 (reason code) and §3.1's price index aren't checked by code. The approver checks them.
 
 ## Network
 
-All apps share one Container Apps environment with peer-to-peer encryption on. Only the orchestrator has external ingress; the data-agent answers only inside the environment (404 from outside). Container Apps authenticates apps to each other but doesn't authorize them; the token checks above do.
+All apps share one Container Apps environment with peer-to-peer encryption on. Only the orchestrator and proposals-api have external ingress (people reach them; proposals-api's routes still accept only the allow-listed apps). The data, policy and action agents answer only inside the environment (404 from outside). Container Apps authenticates apps to each other but doesn't authorize them; the token checks above do.
 
 ## Tests and the local issuer
 

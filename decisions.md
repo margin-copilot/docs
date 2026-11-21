@@ -364,12 +364,14 @@ One entry per decision: what, why, what was rejected, and what would make us rev
   - **Two caller allow-lists in one service:** drafts accept only the action agent's app; listing and decisions accept only apps people use (the CLI now, the web app at milestone 8). These are two instances of the shared token check, not a second check.
 - **Conservative where checks are missing:**
   - every price cut needs the director (PP-04 §3.5's margin-floor check needs PP-06 data);
-  - fresh produce follows its tier (PP-04 §3.4's weekly repricing needs a price-index check).
+  - every fresh-produce increase (tomatoes, potatoes, onions, oranges) needs the director under PP-04 §3.4, without the tier caps §3.4 lifts (its price index ≤ 105 isn't checked).
+- **Percents for people:** two decimals, and rounding never lands on a limit (0, 3, 4, 8, 10%) the exact value isn't on, so the figure can't contradict the approver. Prices are stored in cents.
 - **Hard caps:** a draft over Tier A +3% (§3.1) or Tier B +10% (§3.2) is refused with the clause, since nobody may approve it.
 - **Groups vs USER_REGIONS** (milestone 3's open item): Entra groups are the source of truth for roles. SQL's mapping must also allow the price read, so a disagreement fails closed.
 - **Known limits:**
   - approval changes the proposal's status, not the database's prices;
   - the price is the one at draft time;
-  - the proposer is stored as an object ID.
+  - the proposer is stored as an object ID;
+  - **policy checks proposals-api doesn't make:** PP-04 §2.2 (one increase per product and region in 30 days), §2.3 (a reason code), and §3.1's price index ≤ 102 for Tier A. The person approving checks these.
 - **Why:** who may approve is an authorization decision, so `CLAUDE.md` allows it only from the validated token and data the service reads itself, never from a model or a request body.
 
