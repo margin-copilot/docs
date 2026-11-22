@@ -51,7 +51,7 @@ Dockerfile  pyproject.toml  .env.example  .github/workflows/{ci,build}.yml (ci =
 | 5 | policy-agent: policy Markdown, indexer, group filter; orchestrator routes to it and reports `citations`; evals wiring | 7 | Groundedness and access cases pass in the live suite (37 cases, three runs in a row) — done 2026-11-20 |
 | 6 | proposals-api + action-agent; orchestrator routes to it; D-012 approval boundaries tested in proposals-api | 8 | Tests show no approval path without the right role and region — done 2026-11-21 (42 live cases three runs in a row; live approval check 12/12) |
 | 7 | orchestrator: tools over A2A, conversations, scope rules, chat API; conversation-resume hijack eval case | 8 | End-to-end eval suite passes — done 2026-11-21 (53 live cases three runs in a row; conversation check 3/3) |
-| 8 | web: MSAL sign-in, chat, approvals | 8 | Demo question works in the browser for north.mgr and south.mgr |
+| 8 | web: MSAL sign-in, chat, approvals | 8 | Demo question works in the browser for north.mgr and south.mgr — done 2026-11-22 (owner's browser demo; 54 live cases three runs in a row) |
 | 9 | Observability and cost: traces across services, cost per question | 4 | Every eval run reports cost per question |
 | 10 | Full Bicep + per-repo GitHub Actions deploys (OIDC) | 10 | A push to main deploys that service; evals gate it |
 | 11 | Adversarial pass: poisoned document, RLS bypass (incl. inference through errors), SQL injection, wrong-caller tokens | 5 | Each finding has a test and a fix note |

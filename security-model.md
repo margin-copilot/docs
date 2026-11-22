@@ -99,6 +99,15 @@ Sales data lives in an Azure SQL free-offer database on an Entra-only server (no
   - the price is the one at draft time;
   - PP-04 §2.2 (30-day rule), §2.3 (reason code) and §3.1's price index aren't checked by code. The approver checks them.
 
+## Web app
+
+- **A public client:** the SPA holds no secret. Sign-in is an MSAL redirect with PKCE; tokens live in `sessionStorage` and end with the tab (D-042).
+- **One token per service:** chat uses a token for the orchestrator, the approvals screen one for proposals-api. The browser never holds a token for an agent, and the web app can't create drafts: it's on proposals-api's review list, never the draft list.
+- **No hidden frames:** silent renewal uses the cached and refresh tokens only, then a redirect, so the CSP allows no frames at all (`frame-ancestors 'none'`, no `frame-src`).
+- **CSP and plain text:** scripts and styles load only from the site; the page connects only to Entra and the Container Apps hosts. Answers and proposal fields render as text, never HTML or Markdown, so an agent's output can't inject markup.
+- **CORS is a convenience:** the orchestrator and proposals-api allow exact origins (the site and local development) for `GET`/`POST` with `Authorization` and `Content-Type`. It lets browsers call; it doesn't protect anything. The token check does.
+- **The deployment token is never stored:** the deploy script fetches it, passes it to the pinned CLI in the environment, then unsets it.
+
 ## Conversations
 
 - **Ownership is structural:** turns are stored under the validated token's `oid` (PartitionKey), so a query can only read the caller's own conversations (D-041).
@@ -108,7 +117,9 @@ Sales data lives in an Azure SQL free-offer database on an Entra-only server (no
 
 ## Composed answers
 
-- **Numbers come from the agents:** when a question needs the data and policy agents, the composed answer may only contain numbers that appear in their replies or in what the user typed (a follow-up's rewritten question doesn't count), and only clause IDs the replies cite. Code checks this, retries once, and otherwise shows the replies side by side (D-040).
+- **The data reply is shown as written:** when a question needs the data and policy agents, the data agent's reply leads unchanged and the composer writes only the policy part (D-040).
+- **Numbers come from the agents:** the composer's part may only contain numbers that appear in the replies or in what the user typed (a follow-up's rewritten question doesn't count), and only clause IDs the replies cite. Code checks this, retries once, and otherwise shows the replies side by side.
+- **A refusal isn't buried:** when the data agent refuses with `no_access`, its reply answers the turn alone. The data agent sets that label in code, from the regions the question names against the regions the database shows the user (D-013).
 - **Code sets the labels:** citations, `agents` and `refusal` come from the agents' replies, never from the composer.
 
 ## Network

@@ -45,6 +45,7 @@ One entry per decision: what, why, what was rejected, and what would make us rev
 | D-039 | proposals-api decides approvals from what it can verify | 2026-11-21 |
 | D-040 | Plan, then call: one agent passes through, several are composed and number-checked | 2026-11-21 |
 | D-041 | Our own conversation history in Table Storage, under the owner's oid | 2026-11-21 |
+| D-042 | The web app: a public SPA client on Static Web Apps Free, one token per service | 2026-11-22 |
 
 ---
 
@@ -142,6 +143,7 @@ One entry per decision: what, why, what was rejected, and what would make us rev
 - **Decision:** Azure in France Central (Container Apps, Static Web Apps, Foundry, AI Search, Storage, Key Vault, App Insights); Microsoft Fabric for the lakehouse and Power BI; GitHub for code, CI/CD and container images (ghcr.io); local development on the owner's laptop.
 - **Why:** France Central has the cheapest F2 in the EU; Global model deployments; everything else on free tiers.
 - **Update (milestone 3):** the data lives in the Azure SQL Database free offer (D-031); Fabric appears only in milestone 12, on paid F2 hours.
+- **Update (milestone 8):** the Static Web App runs in East US 2: France Central doesn't offer the Free plan and West Europe refused new customers. It serves only the public static bundle; no user data is stored there (D-042).
 
 ### D-018 Web app
 - **Decision:** React + Vite + MSAL.js, two screens (chat, approvals), on Static Web Apps Free.
@@ -409,4 +411,23 @@ One entry per decision: what, why, what was rejected, and what would make us rev
 - **Why:** ownership is structural, not a check that could be forgotten. Exact control over what is kept, with no new service holding user answers.
 - **Rejected:** Foundry-managed conversations. That's another service and SDK surface, and ownership would still be ours.
 - **Known limit:** expired turns stay in the table until a cleanup job exists. The data is synthetic.
+
+### D-042 The web app: a public SPA client on Static Web Apps Free, one token per service
+- **Decision:**
+  - `margin-web` is a public SPA client (no secret): MSAL.js redirect sign-in with PKCE, tokens in `sessionStorage`.
+  - One token per service: the orchestrator's for chat, proposals-api's for listing, approving and rejecting. The browser never gets a token for an agent.
+  - The app is on the orchestrator's and proposals-api's review allow-lists, never on the draft list: people draft only by asking the copilot.
+  - Silent renewal uses the cached token and the refresh token only; when that fails, a redirect sign-in. No hidden frame, so the CSP needs no `frame-src`.
+  - Static Web Apps Free in East US 2 (D-017). Headers: a CSP with `default-src 'self'` and `connect-src` limited to Entra and `*.azurecontainerapps.io`, `frame-ancestors 'none'`, nosniff, no-referrer. Answers render as plain text, never HTML or Markdown.
+  - Settings (client ID, tenant, scopes, service URLs) are build-time `VITE_*` values in `web/.env`, written by the infra repo's `web-env.sh`.
+  - CORS is set at app level in the two browser-facing services (so it's unit-tested), exact origins only. It's a browser convenience, not a control: the token check is.
+  - The deployment token is fetched at deploy time, after the pinned Static Web Apps CLI is installed, passed in the environment and never stored.
+  - Every pending proposal shows Approve and Reject. proposals-api decides, and a refusal is shown in plain words; no button is hidden by role.
+- **Rejected:**
+  - popup sign-in: blocked by many browsers, awkward on phones;
+  - `localStorage`: tokens outlive the tab;
+  - Static Web Apps' built-in auth: it signs users into the static site, not our APIs, and adds a second identity path;
+  - a GitHub secret holding the deployment token: a stored secret (GitHub OIDC deploys come with milestone 10).
+- **Accepted risks:** `http://localhost:5173` stays a redirect URI and an allowed origin for local development; a page there still needs the user's own sign-in. `connect-src` allows any `*.azurecontainerapps.io` host; the deploy script could write the exact hosts.
+- **Result:** the owner's demo worked in the browser for north.mgr (question, draft, approval) and south.mgr ("Not in your access") after three fixes found in it (D-013 and D-040 amended, a policy-agent verdict rule). The live gate passed 54/54 three runs in a row, with A-22, south.mgr's demo question.
 

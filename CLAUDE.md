@@ -65,14 +65,14 @@ Docs rule: cross-cutting behavior (architecture, identity, decisions, guides) li
 
 ## Conventions
 
-- Python 3.12 with `uv`; `ruff` for lint and format; `pytest`. Node LTS for web.
+- Python 3.12 with `uv`; `ruff` for lint and format; `pytest`. Node 24 LTS for web (`.nvmrc`).
 - Pin exact versions. Agent Framework ships weekly and `agent-framework-a2a` is beta.
 - **Before writing Azure, Fabric or Agent Framework SDK code, read the current Microsoft Learn page** and put its URL in the commit body. Training memory is out of date for these SDKs.
 - Tests first: write the failing test, then the code. Domain logic gets unit tests; adapters get contract tests; real Azure calls are integration tests marked `@pytest.mark.azure` and opt-in.
 - Match the surrounding code. Comments only where the code can't say it.
 - Commits use the owner's GitHub no-reply email. Every repo has the baseline from `docs/templates/` (gitleaks pre-commit hook, CI secret scan, README).
 
-Pinned versions (checked 2026-11-16; re-check before pinning): a2a-sdk 1.3.0 (keep ≥1.2.3), starlette 1.10.0, sse-starlette 3.6.0, uvicorn 0.54.0, httpx 0.28.1, PyJWT 2.15.1, cryptography 50.0.2, msal 1.39.0, azure-identity 1.27.0, pytest 9.2.0, pytest-asyncio 1.4.1, ruff 0.17.3, uv 0.13.6 (CI: astral-sh/setup-uv@v10.3.3), gitleaks 8.30.1, agent-framework-core 1.26.0 (not the `agent-framework` meta package, which pulls ~40 provider packages), agent-framework-foundry 1.16.2, mssql-python 1.17.0, pydantic 2.14.3, sqlglot 30.29.0, msal-extensions 1.3.1, azure-search-documents 12.1.0, azure-data-tables 12.7.0, aiohttp 3.14.5. For later milestones: agent-framework-a2a 1.0.0b261112, azure-ai-projects 2.11.0, azure-ai-evaluation 1.18.12, openai 3.51.0.
+Pinned versions (checked 2026-11-16; re-check before pinning): a2a-sdk 1.3.0 (keep ≥1.2.3), starlette 1.10.0, sse-starlette 3.6.0, uvicorn 0.54.0, httpx 0.28.1, PyJWT 2.15.1, cryptography 50.0.2, msal 1.39.0, azure-identity 1.27.0, pytest 9.2.0, pytest-asyncio 1.4.1, ruff 0.17.3, uv 0.13.6 (CI: astral-sh/setup-uv@v10.3.3), gitleaks 8.30.1, agent-framework-core 1.26.0 (not the `agent-framework` meta package, which pulls ~40 provider packages), agent-framework-foundry 1.16.2, mssql-python 1.17.0, pydantic 2.14.3, sqlglot 30.29.0, msal-extensions 1.3.1, azure-search-documents 12.1.0, azure-data-tables 12.7.0, aiohttp 3.14.5. Web (checked 2026-11-21): react 19.3.1, @azure/msal-browser 5.29.0 (no msal-react), vite 8.3.6, vitest 5.1.0, typescript 7.0.2, @azure/static-web-apps-cli 2.1.0 (dev dependency, so the deploy runs the pinned CLI). For later milestones: agent-framework-a2a 1.0.0b261112, azure-ai-projects 2.11.0, azure-ai-evaluation 1.18.12, openai 3.51.0.
 
 ## Workflow
 
