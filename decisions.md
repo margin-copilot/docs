@@ -124,6 +124,7 @@ One entry per decision: what, why, what was rejected, and what would make us rev
 ### D-013 Narrow scope
 - **Decision:** Pricing, margin, promotions and policies for Riad Market only. Out of scope: short decline, no tool calls. In scope but not allowed: "your access doesn't include that", enforced by RLS and the search filter. In scope but no data: "no data recorded". General concepts are answered only from our policies.
 - **Layers:** orchestrator instructions, no general tools (no web search, no code execution), Foundry content filters and Prompt Shields, eval cases.
+- **Amended (milestone 8):** the data agent's label is set by code from the regions the question names (North/Northern, South/Southern, Center; not "Centre", a North store's name) against the regions the database shows the user; the model's own report of the regions asked is used only when the question names none, because it varied between runs.
 
 ### D-014 English only
 - **Decision:** Policies, data and evals are English only. Another language later means a translation and language-detection layer, not a multilingual corpus.
@@ -391,6 +392,7 @@ One entry per decision: what, why, what was rejected, and what would make us rev
   - **Two agents:** a composer call writes one answer from their replies. Code checks that every number in it appears in a reply or in what the user typed: a percentage against a percentage, clause IDs as IDs, never as numbers. It retries once naming what's ungrounded, and otherwise returns the replies side by side, as it does when the composer fails.
   - **Known gaps:** number words and date parts reused as figures aren't caught. A turn has 230 seconds; past that it's a 502 and nothing is stored.
   - Citations, `agents` and `refusal` are set by code. The refusal label applies only when every agent refused; `no_access` wins.
+  - **Amended (milestone 8):** with two agents, the data agent's reply now leads unchanged and the composer writes only what the policies say below it (numbers still checked). Composed answers had dropped the data agent's headline figures or the policy's limits in about one gate run in three (G-D02, G-C01), and calibrating the prompt moved the omission between cases. When the data agent refuses with `no_access`, its reply answers the turn alone: beside a policy checklist it read as answered anyway (A-22).
   - **Approvals and out-of-scope questions** get fixed answers, with no agent called. No route pairs the action agent with another.
 - **Why:** milestones 4–6's single-agent answers stay exactly as tested. A composed answer can't carry a number no agent gave (D-011), and drafts happen only when asked for.
 - **Rejected:** an orchestrator agent looping over tools. It would rewrite every answer, cost more tokens, and nothing in the cases needs its sequencing.
