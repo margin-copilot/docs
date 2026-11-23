@@ -441,14 +441,15 @@ One entry per decision: what, why, what was rejected, and what would make us rev
     - outgoing httpx calls (the A2A hops), Azure SDK calls (Table Storage, AI Search) and model calls (Agent Framework, sensitive data off);
     - named steps: `orchestrator.route`, `.condense`, `.agent`, `.compose`; `data_agent.run_sql`, `.query`, `.connect`; `policy_agent.clauses`; `proposals_api.sql`.
     - The first real request after a start is marked `margin.cold_start`.
-  - **No content:** counts, durations, labels and error types only. A unit test per service and a live query over every table check it; a SQL compile error's text stays out (it can echo the SQL).
+  - **No content:** counts, durations, labels and error types only. Content tests in the orchestrator, data agent and policy agent (the services that see questions, SQL or answers) and a live query over every table check it; a SQL compile error's text stays out (it can echo the SQL).
   - **Sampling** is 100%. **No OpenTelemetry log export:** container console and system logs reach the same workspace through the environment's `azure-monitor` destination and a diagnostic setting (keyless).
   - **Alerts:** five log rules at 15 minutes ($0.50 a month each), a restart alert per container app and Failure Anomalies, all to one email action group (the budget alerts' address by default). `ALERTS_ENABLED=false` stops them at no cost.
-    - `chat-failing`: at least 20% of at least 3 signed-in turns ended in a 5xx;
-    - `chat-slow`: warm p95 above the target;
-    - `dependency-failing`: one dependency failed at least 3 times (404s left out);
-    - `security-signals`: at least 10 rejected tokens or refusals (401/403), or SQL the guard rejected, from one service;
+    - `chat-failing`: at least 2 failures, and 20% or more of at least 3 signed-in turns, ended in a 5xx;
+    - `chat-slow`: at least 2 of at least 3 warm turns above the target (a turn where any service started cold or the database was resuming doesn't count);
+    - `dependency-failing`: one dependency failed in at least 3 turns (a2a-sdk's internal spans and HTTP 4xx answers left out);
+    - `security-signals`: at least 10 rejected tokens or refusals (401/403) on a service's own routes, or SQL the guard rejected, from one service, over 30 minutes;
     - `token-ceiling`: model tokens per hour above the ceiling.
+    - The queries live in the infra repo's `bicep/monitoring/alerts/*.kql`; `scripts/alert-rules-test.py` checks each one against synthetic scenarios.
   - **Dashboard** "Chat latency" in the portal's free Grafana, as code.
   - **Every eval run reports time and cost per question:** the runner sends a `traceparent` per case and reads the trace back, pricing cached input at its own rate.
 - **Why:** latency is the owner's priority, and it can't be fixed without seeing where the time goes. Everything stays in one Azure-native place, keyless, with nothing that would need a prompt in telemetry.
@@ -460,7 +461,7 @@ One entry per decision: what, why, what was rejected, and what would make us rev
   - Starlette's own instrumentation: untested on Starlette 1.x;
   - a synthetic uptime test: a chat turn needs an MFA sign-in, and a ping keeps apps awake against scale to zero;
   - Foundry's Tracing page connection: an API-key connection that stores the connection string.
-- **Result:** one trace per turn across services; the live suite passed 54/54 with the cost report ($0.0047 a question, 16.9 s on average); the six alerts that can be drilled fired in drills. The drills found that rejected tokens diluted `chat-failing`; they no longer count as turns. The latency baseline (`research/2026-11-latency-baseline.md`): a warm demo turn takes 60–88 s, nearly all model calls (reasoning tokens), and a cold one about 100 s more (container starts, then the database's resume).
+- **Result:** one trace per turn across services; the live suite passed 54/54 with the cost report ($0.0047 a question, 16.9 s on average); the six alerts that can be drilled fired in drills. The drills found that rejected tokens diluted `chat-failing`; they no longer count as turns. The final review found that one bad turn, a cold downstream app, a scanner's 401s or an expected refusal could each send a false email; the queries now need two failures, warm turns only, the services' own routes and real failures. The latency baseline (`research/2026-11-latency-baseline.md`): a warm demo turn takes 60–88 s, nearly all model calls (reasoning tokens), and a cold one about 100 s more (container starts, then the database's resume).
 - **Known limits:**
   - a2a-sdk's own spans (about 30 per agent call) add volume, not content;
   - the user's oid appears in Table Storage query URLs (pseudonymous; the users are synthetic);

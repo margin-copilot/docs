@@ -125,11 +125,11 @@ Sales data lives in an Azure SQL free-offer database on an Entra-only server (no
 ## Telemetry
 
 - **What is recorded:** durations, counts (rows, clauses, model calls, tokens), labels (route, agent, refusal, cold start) and error types, across one trace per chat turn (D-043).
-- **What never is:** questions, answers, prompts, instructions, tool arguments or results, SQL text, SQL rows, tokens or `Authorization` headers. Agent Framework runs with sensitive data off, and a SQL compile error's text stays out of spans. A unit test per service, and a live query over every telemetry and log table, check this.
+- **What never is:** questions, answers, prompts, instructions, tool arguments or results, SQL text, SQL rows, tokens or `Authorization` headers. Agent Framework runs with sensitive data off, and a SQL compile error's text stays out of spans. Content tests in the orchestrator, data agent and policy agent, and a live query over every telemetry and log table, check this.
 - **Keyless ingestion:** Application Insights accepts only Entra-authenticated telemetry; each app's managed identity holds Monitoring Metrics Publisher. The connection string alone can't send anything.
 - **Trace context is correlation only:** a caller's `traceparent` joins its spans to the turn; it never grants anything.
 - **Identifiers:** the user's oid appears in Table Storage query URLs (conversations live under it, D-041). It's pseudonymous, and the users are synthetic.
-- **Alerts on security signals:** a burst of rejected tokens or refusals (401/403), or SQL the guard rejected, emails the owner within about 15 minutes.
+- **Alerts on security signals:** at least 10 rejected tokens or refusals (401/403) on a service's own routes, or SQL the guard rejected, within 30 minutes, email the owner within about 20 minutes (a 15-minute evaluation plus ingestion). A scanner's 401s on other paths of the public ingress don't count.
 
 ## Network
 
