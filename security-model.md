@@ -122,6 +122,15 @@ Sales data lives in an Azure SQL free-offer database on an Entra-only server (no
 - **A refusal isn't buried:** when the data agent refuses with `no_access`, its reply answers the turn alone. The data agent sets that label in code, from the regions the question names against the regions the database shows the user (D-013).
 - **Code sets the labels:** citations, `agents` and `refusal` come from the agents' replies, never from the composer.
 
+## Telemetry
+
+- **What is recorded:** durations, counts (rows, clauses, model calls, tokens), labels (route, agent, refusal, cold start) and error types, across one trace per chat turn (D-043).
+- **What never is:** questions, answers, prompts, instructions, tool arguments or results, SQL text, SQL rows, tokens or `Authorization` headers. Agent Framework runs with sensitive data off, and a SQL compile error's text stays out of spans. A unit test per service, and a live query over every telemetry and log table, check this.
+- **Keyless ingestion:** Application Insights accepts only Entra-authenticated telemetry; each app's managed identity holds Monitoring Metrics Publisher. The connection string alone can't send anything.
+- **Trace context is correlation only:** a caller's `traceparent` joins its spans to the turn; it never grants anything.
+- **Identifiers:** the user's oid appears in Table Storage query URLs (conversations live under it, D-041). It's pseudonymous, and the users are synthetic.
+- **Alerts on security signals:** a burst of rejected tokens or refusals (401/403), or SQL the guard rejected, emails the owner within about 15 minutes.
+
 ## Network
 
 All apps share one Container Apps environment with peer-to-peer encryption on. Only the orchestrator and proposals-api have external ingress (people reach them; proposals-api's routes still accept only the allow-listed apps). The data, policy and action agents answer only inside the environment (404 from outside). Container Apps authenticates apps to each other but doesn't authorize them; the token checks above do.

@@ -21,7 +21,7 @@ Browser: web SPA (Static Web Apps, MSAL sign-in)
       ─A2A→ policy-agent [internal]  reads the clauses the caller's groups may read → AI Search Free (D-036)
       ─A2A→ action-agent [internal]  extracts the draft; code sends it to proposals-api (PENDING drafts only, D-038)
   → proposals-api        [Container App, external ingress]   no LLM; drafts from the action agent only; list / approve / reject for people; Table Storage (D-039)
-Every service: Entra token check on every request, OBO exchange per hop, OTel traces to App Insights.
+Every service: Entra token check on every request, OBO exchange per hop, OTel traces to App Insights (keyless, no content; D-043).
 Models: Foundry (gpt-5-mini + text-embedding-3-small). Region: France Central.
 ```
 
@@ -72,7 +72,7 @@ Docs rule: cross-cutting behavior (architecture, identity, decisions, guides) li
 - Match the surrounding code. Comments only where the code can't say it.
 - Commits use the owner's GitHub no-reply email. Every repo has the baseline from `docs/templates/` (gitleaks pre-commit hook, CI secret scan, README).
 
-Pinned versions (checked 2026-11-16; re-check before pinning): a2a-sdk 1.3.0 (keep ≥1.2.3), starlette 1.10.0, sse-starlette 3.6.0, uvicorn 0.54.0, httpx 0.28.1, PyJWT 2.15.1, cryptography 50.0.2, msal 1.39.0, azure-identity 1.27.0, pytest 9.2.0, pytest-asyncio 1.4.1, ruff 0.17.3, uv 0.13.6 (CI: astral-sh/setup-uv@v10.3.3), gitleaks 8.30.1, agent-framework-core 1.26.0 (not the `agent-framework` meta package, which pulls ~40 provider packages), agent-framework-foundry 1.16.2, mssql-python 1.17.0, pydantic 2.14.3, sqlglot 30.29.0, msal-extensions 1.3.1, azure-search-documents 12.1.0, azure-data-tables 12.7.0, aiohttp 3.14.5. Web (checked 2026-11-21): react 19.3.1, @azure/msal-browser 5.29.0 (no msal-react), vite 8.3.6, vitest 5.1.0, typescript 7.0.2, @azure/static-web-apps-cli 2.1.0 (dev dependency, so the deploy runs the pinned CLI). For later milestones: agent-framework-a2a 1.0.0b261112, azure-ai-projects 2.11.0, azure-ai-evaluation 1.18.12, openai 3.51.0.
+Pinned versions (checked 2026-11-16; re-check before pinning): a2a-sdk 1.3.0 (keep ≥1.2.3), starlette 1.10.0, sse-starlette 3.6.0, uvicorn 0.54.0, httpx 0.28.1, PyJWT 2.15.1, cryptography 50.0.2, msal 1.39.0, azure-identity 1.27.0, pytest 9.2.0, pytest-asyncio 1.4.1, ruff 0.17.3, uv 0.13.6 (CI: astral-sh/setup-uv@v10.3.3), gitleaks 8.30.1, agent-framework-core 1.26.0 (not the `agent-framework` meta package, which pulls ~40 provider packages), agent-framework-foundry 1.16.2, mssql-python 1.17.0, pydantic 2.14.3, sqlglot 30.29.0, msal-extensions 1.3.1, azure-search-documents 12.1.0, azure-data-tables 12.7.0, aiohttp 3.14.5. Web (checked 2026-11-21): react 19.3.1, @azure/msal-browser 5.29.0 (no msal-react), vite 8.3.6, vitest 5.1.0, typescript 7.0.2, @azure/static-web-apps-cli 2.1.0 (dev dependency, so the deploy runs the pinned CLI). Observability (checked 2026-11-23): azure-monitor-opentelemetry 1.8.12, opentelemetry-instrumentation-asgi 0.66b2 (not the Starlette instrumentation, untested on Starlette 1.x; no openai instrumentation, it duplicates chat spans), azure-monitor-query 2.0.0 (evals). For later milestones: agent-framework-a2a 1.0.0b261112, azure-ai-projects 2.11.0, azure-ai-evaluation 1.18.12, openai 3.51.0.
 
 ## Workflow
 

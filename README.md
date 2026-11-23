@@ -4,7 +4,7 @@ A secure multi-agent pricing assistant on Azure, built as a personal learning pr
 
 Pricing managers at Riad Market, a fictional Moroccan grocery chain, ask why margins moved and what pricing policy allows. Four agents answer from synthetic sales data and policy documents, show each manager only their own region, and draft price changes that a person must approve.
 
-**Status:** milestone 8 done (the copilot in the browser: Microsoft sign-in, chat with follow-ups, an approvals screen; the demo works for a North and a South manager; 54 live cases pass three runs in a row). Next: milestone 9 (observability and cost: traces across services, cost per question).
+**Status:** milestone 9 done (one trace per chat turn across every service, keyless and without content; alerts by email; a Grafana dashboard; every live eval run reports time and cost per question; a measured [latency baseline](research/2026-11-latency-baseline.md)). Next: the latency fixes, then milestone 10 (full Bicep and deploys).
 
 ## Read in this order
 

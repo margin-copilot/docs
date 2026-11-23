@@ -46,6 +46,7 @@ One entry per decision: what, why, what was rejected, and what would make us rev
 | D-040 | Plan, then call: one agent passes through, several are composed and number-checked | 2026-11-21 |
 | D-041 | Our own conversation history in Table Storage, under the owner's oid | 2026-11-21 |
 | D-042 | The web app: a public SPA client on Static Web Apps Free, one token per service | 2026-11-22 |
+| D-043 | Observability: one trace per turn, keyless and without content; alerts by email; Grafana in the portal | 2026-11-23 |
 
 ---
 
@@ -431,3 +432,37 @@ One entry per decision: what, why, what was rejected, and what would make us rev
 - **Accepted risks:** `http://localhost:5173` stays a redirect URI and an allowed origin for local development; a page there still needs the user's own sign-in. `connect-src` allows any `*.azurecontainerapps.io` host; the deploy script could write the exact hosts.
 - **Result:** the owner's demo worked in the browser for north.mgr (question, draft, approval) and south.mgr ("Not in your access") after three fixes found in it (D-013 and D-040 amended, a policy-agent verdict rule). The live gate passed 54/54 three runs in a row, with A-22, south.mgr's demo question.
 
+### D-043 Observability: one trace per turn, keyless and without content; alerts by email; Grafana in the portal
+- **Decision:**
+  - Every service exports OpenTelemetry traces and metrics to one workspace-based Application Insights through the Azure Monitor distro, set up once in `shared` (`configure_telemetry`, `instrument_app`, `span`).
+  - **Keyless:** the component has local auth off, and each app's managed identity holds Monitoring Metrics Publisher on it. The connection string is configuration, not a secret.
+  - **One trace per chat turn:**
+    - incoming requests: the ASGI middleware, which reads a caller's `traceparent`;
+    - outgoing httpx calls (the A2A hops), Azure SDK calls (Table Storage, AI Search) and model calls (Agent Framework, sensitive data off);
+    - named steps: `orchestrator.route`, `.condense`, `.agent`, `.compose`; `data_agent.run_sql`, `.query`, `.connect`; `policy_agent.clauses`; `proposals_api.sql`.
+    - The first real request after a start is marked `margin.cold_start`.
+  - **No content:** counts, durations, labels and error types only. A unit test per service and a live query over every table check it; a SQL compile error's text stays out (it can echo the SQL).
+  - **Sampling** is 100%. **No OpenTelemetry log export:** container console and system logs reach the same workspace through the environment's `azure-monitor` destination and a diagnostic setting (keyless).
+  - **Alerts:** five log rules at 15 minutes ($0.50 a month each), a restart alert per container app and Failure Anomalies, all to one email action group (the budget alerts' address by default). `ALERTS_ENABLED=false` stops them at no cost.
+    - `chat-failing`: at least 20% of at least 3 signed-in turns ended in a 5xx;
+    - `chat-slow`: warm p95 above the target;
+    - `dependency-failing`: one dependency failed at least 3 times (404s left out);
+    - `security-signals`: at least 10 rejected tokens or refusals (401/403), or SQL the guard rejected, from one service;
+    - `token-ceiling`: model tokens per hour above the ceiling.
+  - **Dashboard** "Chat latency" in the portal's free Grafana, as code.
+  - **Every eval run reports time and cost per question:** the runner sends a `traceparent` per case and reads the trace back, pricing cached input at its own rate.
+- **Why:** latency is the owner's priority, and it can't be fixed without seeing where the time goes. Everything stays in one Azure-native place, keyless, with nothing that would need a prompt in telemetry.
+- **Rejected:**
+  - Langfuse: its value is prompt capture, which our rules forbid; it needs an API key and is an outside service;
+  - Grafana Cloud: an outside service with a key;
+  - Azure Managed Grafana Standard: paid, for what the portal gives free;
+  - `microsoft-opentelemetry`: it pulls the Agent Framework meta package;
+  - Starlette's own instrumentation: untested on Starlette 1.x;
+  - a synthetic uptime test: a chat turn needs an MFA sign-in, and a ping keeps apps awake against scale to zero;
+  - Foundry's Tracing page connection: an API-key connection that stores the connection string.
+- **Result:** one trace per turn across services; the live suite passed 54/54 with the cost report ($0.0047 a question, 16.9 s on average); the six alerts that can be drilled fired in drills. The drills found that rejected tokens diluted `chat-failing`; they no longer count as turns. The latency baseline (`research/2026-11-latency-baseline.md`): a warm demo turn takes 60–88 s, nearly all model calls (reasoning tokens), and a cold one about 100 s more (container starts, then the database's resume).
+- **Known limits:**
+  - a2a-sdk's own spans (about 30 per agent call) add volume, not content;
+  - the user's oid appears in Table Storage query URLs (pseudonymous; the users are synthetic);
+  - Failure Anomalies needs 24 hours of data before it can alert;
+  - a caller's trace context is correlation only, never authorization.
