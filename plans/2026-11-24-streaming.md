@@ -4,11 +4,13 @@
 
 **Goal:** The chat shows what the copilot is doing from the first second and the data agent's reply as soon as it's ready (about 20 s into the demo question instead of 44 s), with every answer exactly as checked as today; `margin_change` saves a few more seconds by running its queries at the same time.
 
-**Outcome (2026-11-24):** done. On the warm demo question the first step shows within 0.2 s, the data agent's reply at 19.2 / 21.0 / 15.6 s (median 19.2 s, target 26 s) and the full answer at 35.3 / 40.2 / 35.8 s (median 35.8 s, from 44.3 s); the data agent's span is 13–19 s (18–23 before). The live gate passed 54/54 three streamed runs in a row (15.4–16.2 s, $0.0039–0.0041 a question) and once as JSON. Final versions: orchestrator `v0.9.0`, data-agent `v0.4.7`, web `v0.2.0`. Deviations, from the run ledger:
+**Outcome (2026-11-24):** done. On the warm demo question the first step shows within 0.2 s, the data agent's reply at 19.2 / 21.0 / 15.6 s (median 19.2 s, target 26 s) and the full answer at 35.3 / 40.2 / 35.8 s (median 35.8 s, from 44.3 s); the data agent's span is 13–19 s (18–23 before). The live gate passed 54/54 three streamed runs in a row (15.4–16.2 s, $0.0039–0.0041 a question) and once as JSON. Final versions: orchestrator `v0.9.1`, data-agent `v0.4.8`, web `v0.2.1`. Deviations, from the run ledger:
 - `stream_problems` needs a step only before `done`: a 404 for an unknown conversation is right with no step before it.
 - An unexpected error in a streamed turn is an `error` event with status 500, and its span is marked failed.
 - chat-failing counts 5xx and a 2xx with `Success == false`; `Success == false` alone would count 404s.
 - `run_cases.py` takes a token per case: one sign-in per persona expired during the longest group.
+- The gate passed an answer with the data agent's facts mid-line ("regions_asked: ["N"]. found_data: true."); the data agent now strips them mid-line and the judge fails any answer naming them.
+- The final review's fixes: open streams get 25 s on shutdown (a deploy cut them at once), and the early reply is hidden from screen readers (the answer repeats it). After them the gate passed 54/54 three streamed runs in a row (15.3–17.4 s, $0.0040–0.0041 a question) and once as JSON (16.3 s).
 
 **Architecture:**
 - **The orchestrator streams when asked:** `POST /chat` with `Accept: text/event-stream` answers with server-sent events:
