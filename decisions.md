@@ -48,6 +48,7 @@ One entry per decision: what, why, what was rejected, and what would make us rev
 | D-042 | The web app: a public SPA client on Static Web Apps Free, one token per service | 2026-11-22 |
 | D-043 | Observability: one trace per turn, keyless and without content; alerts by email; Grafana in the portal | 2026-11-23 |
 | D-044 | Answer speed: one tool for "why" questions, wake at sign-in | 2026-11-24 |
+| D-045 | Streaming progress: steps and the data agent's reply as they happen; the composed part whole, after its check | 2026-11-24 |
 
 ---
 
@@ -236,6 +237,7 @@ One entry per decision: what, why, what was rejected, and what would make us rev
   - **Not testable through `/chat`, so tested elsewhere:**
     - D-012 approval boundaries (e.g. 4.0% vs 4.1% on Tier B) are tested in proposals-api.
     - A conversation-resume hijack case (D-011) is added once conversation IDs exist (milestone 7).
+- **Amended (D-045):** the same `POST /chat` with `Accept: text/event-stream` streams the turn: `step` and `lead` events, then `done` with exactly the JSON body above, or `error` with the message and status the JSON reply would have had. Without that header the response is the JSON above, unchanged. `run_cases.py --stream` judges `done` the same way and checks the events' order.
 
 ### D-030 Plain-Python generator
 - **Decision:** The `data` repo generates the dataset in plain Python (seed 42) and loads it with `mssql-python`, not with PySpark.
@@ -483,5 +485,27 @@ One entry per decision: what, why, what was rejected, and what would make us rev
   - pooling SQL connections: 50 ms each when warm, and per-user connections are a rule;
   - a router shortcut: about 2 s, and a rule that can misroute;
   - effort low in the data agent, the policy agent and the composer: the gate found false "not recorded" answers, a wrong ratio, a false "Allowed" verdict and a missing approval limit after one calibration each.
-- **Not yet:** streaming the answer. It changes the `/chat` contract, the A2A calls and the web app; it's the next step if answers still feel slow.
+- **Not yet:** streaming the answer. It changes the `/chat` contract, the A2A calls and the web app; it's the next step if answers still feel slow. Done as D-045, without changing the A2A calls.
 - **Result:** the live gate passed 54/54 three runs in a row on the final versions (average 16.6, 16.5 and 17.1 s and $0.0040–0.0042 a question, from 16.9 s and $0.0047). The warm demo question takes 44–48 s (median 44.3 s, from 60–88 s), missing the 40 s target: with the policy agent at low it took 33.8 s, but that failed the gate. It takes 5 model calls instead of 10, at about $0.016 instead of $0.028. Data-only questions take 9 s (from 10–11), policy-only 18–22 s (unchanged). After sign-in from a fully cold system (every app at zero, the database paused), the demo question took 48.1 s, against 167.5 s cold before: the warm-up hid the container starts and most of the database's resume (`research/2026-11-latency-baseline.md`). The chat-slow alert's target moved from 120 s to 75 s: the warm p95 is 44.8 s, and the slowest warm turn in the gate (79.7 s) was alone, while the rule needs two slow turns in 15 minutes. It fired once, on the wrong Ramadan answers (129–142 s) before data-agent v0.4.6.
+
+### D-045 Streaming progress: steps and the data agent's reply as they happen; the composed part whole, after its check
+- **Decision:**
+  - **`POST /chat` streams on request** (`Accept: text/event-stream`), as server-sent events, each `data:` one JSON object:
+    - `step` (`condense`, `route`, `data-agent`, `policy-agent`, `action-agent`, `compose`) as each stage starts;
+    - `lead`, the data agent's reply, the moment it arrives in a turn with two agents (the final answer leads with it unchanged, or replaces it);
+    - then `done` with the JSON body (D-029), or `error` with the JSON path's message and status.
+    Without the header, `/chat` answers JSON as before.
+  - **The composed part arrives whole, after the number check and the echo strip** (D-011, D-040).
+  - **The A2A calls don't change:** each agent's reply is validated whole (the shared contract, its size cap) before anything shows.
+  - **A turn runs in its own task:** a browser that leaves doesn't cut it short, so it's stored once, as a JSON turn always was.
+  - **Failures after the stream starts:** a stream can't change its `200`, so code marks the request's server span as an error for a 5xx-class failure, and chat-failing counts a 2xx with `Success == false` beside 5xx (App Insights grades a 4xx as unsuccessful, so `Success` alone would count 404s).
+  - **The web app reads the stream with `fetch`,** so the token stays in the `Authorization` header. It shows the current step, then the data agent's reply, and the final answer replaces both.
+  - **`margin_change` runs its five queries at the same time** (D-032), each on its own connection as the user.
+- **Why:** after D-044 the demo question still took about 44 s, most of it model reasoning, which can't be streamed. Showing progress at once and the data agent's reply at about 20 s cuts the wait for something useful without changing what's checked.
+- **Rejected:**
+  - **streaming the composer's text token by token:** the number check can reject a part after it was written, and a rejected part must never be on screen; with a reasoning model the visible text is the last 2–3 s of the composer's 19–26 s anyway;
+  - **streaming the agents' text over A2A:** their replies are validated whole, and their visible text is likewise a few seconds;
+  - **WebSockets:** a second protocol through the ingress and CORS, for one-way events;
+  - **the browser's `EventSource`:** GET only, with no `Authorization` header, so the token would go in the URL.
+- **Not yet:** a faster non-reasoning model for the composer (a new Foundry deployment, and a risk of wrong verdicts).
+- **Result:** the live gate passed 54/54 three streamed runs in a row (average 15.4, 15.8 and 16.2 s and $0.0039–0.0041 a question) and once as JSON (15.5 s). On the warm demo question the first step shows within 0.2 s, the data agent's reply at 15.6–21.0 s (median 19.2 s) and the full answer at 35.3–40.2 s (median 35.8 s, from 44.3 s). The data agent's span went from 18–23 s to 13–19 s with `margin_change`'s queries at once; the composer was also shorter on these three runs (fewer output tokens, which vary run to run). The Container Apps ingress passes each event as it's written (not documented; checked live).

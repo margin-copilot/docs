@@ -91,3 +91,19 @@ No service started cold inside the question. The warm-up waits up to 120 s, enou
 
 The composer's one call (19–26 s) and the data agent's 2–3 calls set the pace. Streaming the answer would show the data agent's reply about 20 s before the composed part (D-044, not yet). Running `margin_change`'s five queries at the same time would save a few seconds more.
 
+## Streaming (2026-11-24)
+
+Same questions, same persona, warm, on orchestrator `v0.9.0` and data-agent `v0.4.7` (D-045): the turn streams its steps and, in a two-agent turn, the data agent's reply; `margin_change` runs its five queries at the same time. `ask.py --stream` times each event at the client; the agents' spans come from the traces.
+
+| Question | Runs | First step | Data agent's reply | Done | Data agent | Policy agent | Composer |
+|---|---|---|---|---|---|---|---|
+| "Why did dairy margin drop in the North in October 2026?" (data and policy) | 3 | 0.1–0.2 s | 15.6–21.0 s | 35.3–40.2 s (44–48) | 13.4–18.7 s (18–23) | 16.6–17.7 s | 14.9–19.2 s (19–26) |
+| "What was dairy margin in the North in October 2026?" (data only) | 2 | 0.1 s | – | 8.0–8.8 s (9.3) | 5.7–6.8 s | – | – |
+| "Can I raise UHT milk 1 L by 3.6% in the North?" (policy only) | 2 | 0.1 s | – | 16.7–17.0 s (18–22) | – | 13.8–14.8 s | – |
+
+After-the-fixes figures in brackets. A one-agent turn sends no separate reply: its answer is the agent's.
+
+- **Something shows at once:** the first step arrives within 0.2 s (0.6 s on the first turn after a pause). The demo's data reply (median 19.2 s) arrives about 16 s before the full answer.
+- **The demo's full answer:** median 35.8 s, from 44.3 s. The data agent's span is about 4–5 s shorter with the queries at once. The composer was also shorter on these three runs (6,200–7,400 output tokens against 6,900–8,200 before); that varies run to run, so three runs don't show the 40 s target as met for good.
+- **The ingress doesn't buffer:** each event reached the client as the orchestrator wrote it.
+- **The live suite** (54 cases): three streamed runs at 15.4–16.2 s and $0.0039–0.0041 a question on average, p95 42.7 s, slowest turn 64.7 s (G-A02); one JSON run at 15.5 s.

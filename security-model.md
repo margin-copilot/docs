@@ -115,6 +115,13 @@ Sales data lives in an Azure SQL free-offer database on an Entra-only server (no
 - **Nothing comes back:** the orchestrator answers `202 {}` at once and the data agent `204`; results and errors stay server-side, logged by type only. The other agents only get an unauthenticated card fetch, which starts their containers.
 - **Not an amplifier:** each call needs a valid token, and one warm-up runs at a time per orchestrator replica; a call while one runs does nothing.
 
+## Streaming (D-045)
+
+- **The same token check, before the stream:** `/chat` with `Accept: text/event-stream` goes through the same middleware; a bad token is still 401/403 and a bad body 400/413, as JSON, before any event.
+- **The token stays in a header:** the web app reads the stream with `fetch` and the `Authorization` header, never the browser's `EventSource`, which would put the token in the URL.
+- **No new data:** `step` events carry only fixed stage names. `lead` is the data agent's reply after the shared contract's validation (at most 4,000 characters), the same text the final answer leads with; the web app shows it as text. The composed part appears only in `done`, after the number check.
+- **Errors:** an `error` event carries only the messages and statuses the JSON reply would have had. A 5xx-class failure marks the request failed in traces, without content.
+
 ## Conversations
 
 - **Ownership is structural:** turns are stored under the validated token's `oid` (PartitionKey), so a query can only read the caller's own conversations (D-041).

@@ -4,7 +4,7 @@ A secure multi-agent pricing assistant on Azure, built as a personal learning pr
 
 Pricing managers at Riad Market, a fictional Moroccan grocery chain, ask why margins moved and what pricing policy allows. Four agents answer from synthetic sales data and policy documents, show each manager only their own region, and draft price changes that a person must approve.
 
-**Status:** milestone 9 done (one trace per chat turn across every service, keyless and without content; alerts by email; a Grafana dashboard; every live eval run reports time and cost per question; a measured [latency baseline](research/2026-11-latency-baseline.md)). Then the [latency fixes](research/2026-11-latency-baseline.md#after-the-fixes-2026-11-24) (D-044): the warm demo question takes about 44 s instead of 60–88 s, and about 48 s right after sign-in from a cold system instead of 168 s. Next: milestone 10 (full Bicep and deploys).
+**Status:** milestone 9 done (one trace per chat turn across every service, keyless and without content; alerts by email; a Grafana dashboard; every live eval run reports time and cost per question; a measured [latency baseline](research/2026-11-latency-baseline.md)). Then the [latency fixes](research/2026-11-latency-baseline.md#after-the-fixes-2026-11-24) (D-044): the warm demo question takes about 44 s instead of 60–88 s, and about 48 s right after sign-in from a cold system instead of 168 s. Then [streaming](research/2026-11-latency-baseline.md#streaming-2026-11-24) (D-045): the chat shows each step from the first second and, on the demo question, the data agent's reply at about 19 s; the full answer takes about 36 s. Next: milestone 10 (full Bicep and deploys).
 
 ## Read in this order
 
