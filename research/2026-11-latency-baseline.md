@@ -57,21 +57,22 @@ Not worth it now: pooling SQL connections (50 ms each, and per-user connections 
 
 ## After the fixes (2026-11-24)
 
-Same questions, same persona, same method, on orchestrator `v0.8.2`, data-agent `v0.4.3`, policy-agent `v0.1.8` (D-044): `margin_change` for "why" questions, reasoning effort low in the policy agent only (the data agent and the composer stay medium), and the warm-up at sign-in.
+Same questions, same persona, same method, on orchestrator `v0.8.4`, data-agent `v0.4.6`, policy-agent `v0.1.9` (D-044): `margin_change` for "why" questions and the warm-up at sign-in. Reasoning effort stays medium everywhere: low failed the live gate in the data agent, the policy agent and the composer.
 
 ### Warm turns
 
 | Question | Runs | Total | Router | Data agent | Policy agent | Composer |
 |---|---|---|---|---|---|---|
-| "Why did dairy margin drop in the North in October 2026?" (data and policy) | 3 | 33–40 s (60–88) | 2.2–2.5 s | 13–18 s (33–53) | 6.1–6.6 s (15–16) | 16–20 s (15–25) |
-| "What was dairy margin in the North in October 2026?" (data only) | 2 | 8–9 s (10–11) | 2.0–2.2 s | 6.4–7.0 s | – | – |
-| "Can I raise UHT milk 1 L by 3.6% in the North?" (policy only) | 2 | 8–10 s (18–20) | 1.8–2.1 s | – | 6.2–7.5 s | – |
+| "Why did dairy margin drop in the North in October 2026?" (data and policy) | 3 | 44–48 s (60–88) | 1.8–2.5 s | 18–23 s (33–53) | 12–19 s (15–16) | 19–26 s (15–25) |
+| "What was dairy margin in the North in October 2026?" (data only) | 2 | 9.3 s (10–11) | 2.0–2.7 s | 6.6–7.3 s | – | – |
+| "Can I raise UHT milk 1 L by 3.6% in the North?" (policy only) | 2 | 18–22 s (18–20) | 1.8–2.0 s | – | 16–20 s | – |
 
-Before-the-fixes figures in brackets.
+Before-the-fixes figures in brackets. The data and policy agents run at the same time, so a turn's total is the router, the slower of the two, then the composer.
 
-- **The demo question:** 5 model calls instead of 10, about 9,400 input and 4,700–5,300 output tokens, about $0.011 a turn instead of $0.028. The data agent answers from one `margin_change` call.
-- **The composer is now the largest step** (16–20 s, one call at effort medium). At low it wrote a false "Allowed" verdict in the gate, so it stays at medium.
-- **The live suite** (54 cases, three runs): 13.7–15.3 s and $0.0031–0.0035 a question on average, from 16.9 s and $0.0047; p95 39.5 s, slowest turn 61.5 s.
+- **The demo question:** 48.4, 44.3 and 43.7 s at the client, median 44.3 s: the 40 s target was missed. With the policy agent at low it was 33.8 s, but that failed the gate. 5 model calls instead of 10, about 9,500 input and 6,900–8,200 output tokens, $0.015–0.017 a turn instead of $0.028. The data agent answers from one `margin_change` call.
+- **The composer is now the largest step** (19–26 s, one call at effort medium). At low it wrote a false "Allowed" verdict in the gate.
+- **Policy-only questions didn't get faster:** one model call at medium, as before.
+- **The live suite** (54 cases, three runs): 16.5–17.1 s and $0.0040–0.0042 a question on average, from 16.9 s and $0.0047; p95 44.8 s, slowest turn 79.7 s (G-D02).
 
 ### After sign-in
 
@@ -79,14 +80,14 @@ One run: every app scaled to zero and the database paused, then the orchestrator
 
 | Part | Time |
 |---|---|
-| `POST /warm` (the orchestrator's own start; the user is still on the sign-in page or the empty chat) | 28.2 s |
-| The agents' container starts, during the wait | about 26–31 s |
-| The database resuming, during the wait | 50.6 s, of which 10.2 s still showed in the question's first connection |
-| The demo question, client total | 53.7 s (cold before: 167.5 s; warm now: 33–40 s) |
+| `POST /warm` (the orchestrator's own start; the user is still on the sign-in page or the empty chat) | 31.1 s |
+| The agents' container starts, during the wait | about 26 s |
+| The database resuming, during the wait | 45.4 s, of which 5.3 s still showed in the question's first connection |
+| The demo question, client total | 48.1 s (cold before: 167.5 s; warm now: 44–48 s) |
 
-No service started cold inside the question. The orchestrator's warm-up gives up waiting after 60 s and logs it, but the data agent's call finishes and the database resumes anyway.
+No service started cold inside the question. The warm-up waits up to 120 s, enough for a container start and the database's resume.
 
 ### Next
 
-The composer's one call and the data agent's 2–3 calls set the pace. Streaming the answer would show the data agent's reply 15–20 s before the policy part (D-044, not yet).
+The composer's one call (19–26 s) and the data agent's 2–3 calls set the pace. Streaming the answer would show the data agent's reply about 20 s before the composed part (D-044, not yet). Running `margin_change`'s five queries at the same time would save a few seconds more.
 
