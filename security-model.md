@@ -108,6 +108,13 @@ Sales data lives in an Azure SQL free-offer database on an Entra-only server (no
 - **CORS is a convenience:** the orchestrator and proposals-api allow exact origins (the site and local development) for `GET`/`POST` with `Authorization` and `Content-Type`. It lets browsers call; it doesn't protect anything. The token check does.
 - **The deployment token is never stored:** the deploy script fetches it, passes it to the pinned CLI in the environment, then unsets it.
 
+## Warm-up at sign-in
+
+- **Authenticated like a chat turn:** the web app's `POST /warm` carries the user's orchestrator token and goes through the same token check as `/chat`. The orchestrator wakes the data agent with an OBO token for the data agent (one hop), and the data agent's `POST /warm` sits behind its own token check (D-044).
+- **The user's own access:** the data agent's warm-up runs the region query as the user, the same query every turn starts with, so RLS applies and a user without database access only gets a logged error type.
+- **Nothing comes back:** the orchestrator answers `202 {}` at once and the data agent `204`; results and errors stay server-side, logged by type only. The other agents only get an unauthenticated card fetch, which starts their containers.
+- **Not an amplifier:** each call needs a valid token, and one warm-up runs at a time per orchestrator replica; a call while one runs does nothing.
+
 ## Conversations
 
 - **Ownership is structural:** turns are stored under the validated token's `oid` (PartitionKey), so a query can only read the caller's own conversations (D-041).

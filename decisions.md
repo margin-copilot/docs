@@ -47,6 +47,7 @@ One entry per decision: what, why, what was rejected, and what would make us rev
 | D-041 | Our own conversation history in Table Storage, under the owner's oid | 2026-11-21 |
 | D-042 | The web app: a public SPA client on Static Web Apps Free, one token per service | 2026-11-22 |
 | D-043 | Observability: one trace per turn, keyless and without content; alerts by email; Grafana in the portal | 2026-11-23 |
+| D-044 | Answer speed: one tool for "why" questions, low effort where the gate holds, wake at sign-in | 2026-11-24 |
 
 ---
 
@@ -314,6 +315,7 @@ One entry per decision: what, why, what was rejected, and what would make us rev
   - The unit tests' scripted model uses Agent Framework's private `_inner_get_response`; re-check it on upgrades.
   - Error vs no-error still leaks one bit per query (milestone 11).
   - Model answers drift between runs, so every milestone re-runs its live gate.
+- **Amended (latency fixes, D-044):** a third tested tool, `margin_change(before_start, before_end, after_start, after_end, region?, category?)`, answers "why did margin change" in one call: the figure for both periods, the products that moved most, and the supplier cost changes, promotions (depth and supplier funding) and price changes behind them, each computed by a parameterized query. It rejects periods that overlap or run backwards, and unknown regions or categories, with a reason the model can act on. A rule asks the model to check once more (the product's key words, the whole month) before saying nothing is recorded. Reasoning effort stays medium: at low, it twice said a recorded price change wasn't recorded and once computed a ratio wrong.
 
 ### D-033 Cases that need the model and data run in a live suite
 - **Decision:** cases carry `suite = "ci"` (the default) or `"live"`.
@@ -353,6 +355,7 @@ One entry per decision: what, why, what was rejected, and what would make us rev
 - **Decision:** per question, the policy agent loads every clause the caller's groups may read (46 clauses, about 5,000 tokens) and the model answers from them, citing clause IDs. Code keeps only citations of clauses it handed the model (brackets and stray spaces stripped, at most 12) and sets the refusal: `no_data` when no clause covers the question, or when an answer cites nothing the caller may read.
 - **Why:** retrieval can't miss a relevant clause, so it can't turn into a false "no policy covers that". The security property is the same group filter.
 - **Revisit when** the corpus outgrows the prompt (about 200 clauses): hybrid and semantic search (D-009). Semantic ranker is available on Free in France Central.
+- **Amended (latency fixes, D-044):** reasoning effort low, with a rule that a "what should I do" question also gets the clauses that limit or approve the action (price-change limits and who approves).
 
 ### D-037 Groups come only from the token; overage fails closed
 - **Decision:** `shared` v0.3.0 reads the `groups` claim from the validated token into `Caller.groups`; an overage indicator (`_claim_names` naming `groups`, or `hasgroups`) empties it and sets `groups_overage`. The policy agent answers `no_access` to an overage without reading anything, and filters on GUID-checked group IDs only. Only the policy agent's app registration requests `groupMembershipClaims: SecurityGroup`: on-behalf-of tokens follow the resource's manifest.
@@ -397,6 +400,7 @@ One entry per decision: what, why, what was rejected, and what would make us rev
   - Citations, `agents` and `refusal` are set by code. The refusal label applies only when every agent refused; `no_access` wins.
   - **Amended (milestone 8):** with two agents, the data agent's reply now leads unchanged and the composer writes only what the policies say below it (numbers still checked). Composed answers had dropped the data agent's headline figures or the policy's limits in about one gate run in three (G-D02, G-C01), and calibrating the prompt moved the omission between cases. When the data agent refuses with `no_access`, its reply answers the turn alone: beside a policy checklist it read as answered anyway (A-22).
   - **Approvals and out-of-scope questions** get fixed answers, with no agent called. No route pairs the action agent with another.
+  - **Amended (latency fixes, D-044):** the composer runs at reasoning effort medium and states each limit with its number as the policy reply gives it ("up to 4%") and who approves above it. At low it once wrote "Allowed" beside the rule that forbade the increase.
 - **Why:** milestones 4–6's single-agent answers stay exactly as tested. A composed answer can't carry a number no agent gave (D-011), and drafts happen only when asked for.
 - **Rejected:** an orchestrator agent looping over tools. It would rewrite every answer, cost more tokens, and nothing in the cases needs its sequencing.
 - **Result:** the live gate passed 52/52 three runs in a row, after the calibration noted in D-035's amendment, and 53/53 again after the final-review fixes (with G-V01, a follow-up in the owner's own conversation).
@@ -467,3 +471,17 @@ One entry per decision: what, why, what was rejected, and what would make us rev
   - the user's oid appears in Table Storage query URLs (pseudonymous; the users are synthetic);
   - Failure Anomalies needs 24 hours of data before it can alert;
   - a caller's trace context is correlation only, never authorization.
+
+### D-044 Answer speed: one tool for "why" questions, low effort where the gate holds, wake at sign-in
+- **Decision:**
+  - **`margin_change` in the data agent** (D-032): a "why did margin change" question takes one tool call instead of five or six queries the model wrote one at a time.
+  - **Reasoning effort low where the live gate holds:** the policy agent. The data agent and the composer stay medium, each after one calibration attempt at low failed in the gate (D-032, D-040).
+  - **Wake at sign-in:** after sign-in the web app calls the orchestrator's `POST /warm` (the user's token; `202 {}` at once). The orchestrator fetches each agent's card, which starts its container, and calls the data agent's `POST /warm` with an OBO token; the data agent runs the region query as the user, which resumes the paused database. Nothing is returned, failures are logged by type only, and one warm-up runs at a time per orchestrator replica.
+- **Why:** the baseline (`research/2026-11-latency-baseline.md`) put nearly all of a warm turn in model calls, mostly reasoning tokens, and a cold turn's extra 100 s in container starts and the database's resume. The data agent's tool loop and reasoning were the largest shares.
+- **Rejected:**
+  - `minReplicas: 1`: about $11.70 a month per app around the clock, or about $2.85 per app for working hours only; three apps would be about $35 or $8.55 a month, against about $8 of budget left;
+  - pooling SQL connections: 50 ms each when warm, and per-user connections are a rule;
+  - a router shortcut: about 2 s, and a rule that can misroute;
+  - effort low in the data agent and the composer: the gate found false "not recorded" answers, a wrong ratio and a false "Allowed" verdict after one calibration each.
+- **Not yet:** streaming the answer. It changes the `/chat` contract, the A2A calls and the web app; it's the next step if answers still feel slow.
+- **Result:** the live gate passed 54/54 three runs in a row (average 15.3, 14.5 and 13.7 s and $0.0031–0.0035 a question, from 16.9 s and $0.0047). The warm demo question takes 33–40 s (median 33.8 s, from 60–88 s), with 5 model calls instead of 10, at about $0.011 instead of $0.028; data-only questions take 8–9 s, policy-only 8–10 s (from 18–20). After sign-in from a fully cold system (every app at zero, the database paused), the demo question took 53.7 s, against 167.5 s cold before: the warm-up hid the container starts and most of the database's resume (`research/2026-11-latency-baseline.md`). The chat-slow alert's target moved from 120 s to 75 s, above the slowest warm turn in the gate (61.5 s).

@@ -54,3 +54,39 @@ Ranked by measured share. The estimated gain is for the warm demo question, toda
 | 6 | Skip the router for questions an obvious rule can place | 1.6–3.4 s | about 2 s | a rule that can misroute; low value |
 
 Not worth it now: pooling SQL connections (50 ms each, and per-user connections are a rule), caching OBO tokens (under 1.3 s).
+
+## After the fixes (2026-11-24)
+
+Same questions, same persona, same method, on orchestrator `v0.8.2`, data-agent `v0.4.3`, policy-agent `v0.1.8` (D-044): `margin_change` for "why" questions, reasoning effort low in the policy agent only (the data agent and the composer stay medium), and the warm-up at sign-in.
+
+### Warm turns
+
+| Question | Runs | Total | Router | Data agent | Policy agent | Composer |
+|---|---|---|---|---|---|---|
+| "Why did dairy margin drop in the North in October 2026?" (data and policy) | 3 | 33–40 s (60–88) | 2.2–2.5 s | 13–18 s (33–53) | 6.1–6.6 s (15–16) | 16–20 s (15–25) |
+| "What was dairy margin in the North in October 2026?" (data only) | 2 | 8–9 s (10–11) | 2.0–2.2 s | 6.4–7.0 s | – | – |
+| "Can I raise UHT milk 1 L by 3.6% in the North?" (policy only) | 2 | 8–10 s (18–20) | 1.8–2.1 s | – | 6.2–7.5 s | – |
+
+Before-the-fixes figures in brackets.
+
+- **The demo question:** 5 model calls instead of 10, about 9,400 input and 4,700–5,300 output tokens, about $0.011 a turn instead of $0.028. The data agent answers from one `margin_change` call.
+- **The composer is now the largest step** (16–20 s, one call at effort medium). At low it wrote a false "Allowed" verdict in the gate, so it stays at medium.
+- **The live suite** (54 cases, three runs): 13.7–15.3 s and $0.0031–0.0035 a question on average, from 16.9 s and $0.0047; p95 39.5 s, slowest turn 61.5 s.
+
+### After sign-in
+
+One run: every app scaled to zero and the database paused, then the orchestrator's `POST /warm` with the user's token, 60 s of waiting, then the demo question.
+
+| Part | Time |
+|---|---|
+| `POST /warm` (the orchestrator's own start; the user is still on the sign-in page or the empty chat) | 28.2 s |
+| The agents' container starts, during the wait | about 26–31 s |
+| The database resuming, during the wait | 50.6 s, of which 10.2 s still showed in the question's first connection |
+| The demo question, client total | 53.7 s (cold before: 167.5 s; warm now: 33–40 s) |
+
+No service started cold inside the question. The orchestrator's warm-up gives up waiting after 60 s and logs it, but the data agent's call finishes and the database resumes anyway.
+
+### Next
+
+The composer's one call and the data agent's 2–3 calls set the pace. Streaming the answer would show the data agent's reply 15–20 s before the policy part (D-044, not yet).
+
