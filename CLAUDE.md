@@ -1,6 +1,6 @@
 # Margin Copilot workspace
 
-Personal learning project: a secure multi-agent pricing assistant on Azure ("Secure Pricing & Margin Copilot") for Riad Market, a fictional Moroccan grocery chain. Claude writes the code; the owner reviews every change. Budget: $20 total. Pace: 1–2 hours a day.
+Personal learning project: a secure multi-agent pricing assistant on Azure ("Secure Pricing & Margin Copilot") for Riad Market, a fictional Moroccan grocery chain. Claude writes the code; the owner reviews every change. Budget: the $200 Azure free credit, until it runs out or the free trial ends (about mid-December; owner, 2026-11-27; D-024). Pace: 1–2 hours a day.
 
 The master copy of this file is `docs/CLAUDE.md` (the docs repo). The workspace folder has a symlink to it, so it stays versioned and applies to every repo here. Paths below are relative to the workspace folder.
 
@@ -72,7 +72,7 @@ Docs rule: cross-cutting behavior (architecture, identity, decisions, guides) li
 - Match the surrounding code. Comments only where the code can't say it.
 - Commits use the owner's GitHub no-reply email. Every repo has the baseline from `docs/templates/` (gitleaks pre-commit hook, CI secret scan, README).
 
-Pinned versions (checked 2026-11-16; re-check before pinning): a2a-sdk 1.3.0 (keep ≥1.2.3), starlette 1.10.0, sse-starlette 3.6.0, uvicorn 0.54.0, httpx 0.28.1, PyJWT 2.15.1, cryptography 50.0.2, msal 1.39.0, azure-identity 1.27.0, pytest 9.2.0, pytest-asyncio 1.4.1, ruff 0.17.3, uv 0.13.6 (CI: astral-sh/setup-uv@v10.3.3), gitleaks 8.30.1, agent-framework-core 1.26.0 (not the `agent-framework` meta package, which pulls ~40 provider packages), agent-framework-foundry 1.16.2, mssql-python 1.17.0, pydantic 2.14.3, sqlglot 30.29.0, msal-extensions 1.3.1, azure-search-documents 12.1.0, azure-data-tables 12.7.0, aiohttp 3.14.5. Web (checked 2026-11-21): react 19.3.1, @azure/msal-browser 5.29.0 (no msal-react), vite 8.3.6, vitest 5.1.0, typescript 7.0.2, @azure/static-web-apps-cli 2.1.0 (dev dependency, so the deploy runs the pinned CLI). Observability (checked 2026-11-23): azure-monitor-opentelemetry 1.8.12, opentelemetry-instrumentation-asgi 0.66b2 (not the Starlette instrumentation, untested on Starlette 1.x; no openai instrumentation, it duplicates chat spans), azure-monitor-query 2.0.0 (evals). For later milestones: agent-framework-a2a 1.0.0b261112, azure-ai-projects 2.11.0, azure-ai-evaluation 1.18.12, openai 3.51.0.
+Pinned versions (checked 2026-11-16; re-check before pinning): a2a-sdk 1.3.0 (keep ≥1.2.3), starlette 1.10.0, sse-starlette 3.6.0, uvicorn 0.54.0, httpx 0.28.1, PyJWT 2.15.1, cryptography 50.0.2, msal 1.39.0, azure-identity 1.27.0, pytest 9.2.0, pytest-asyncio 1.4.1, ruff 0.17.3, uv 0.13.6 (CI: astral-sh/setup-uv@v10.3.3), gitleaks 8.30.1, agent-framework-core 1.26.0 (not the `agent-framework` meta package, which pulls ~40 provider packages), agent-framework-foundry 1.16.2, mssql-python 1.17.0, pydantic 2.14.3, sqlglot 30.29.0, msal-extensions 1.3.1, azure-search-documents 12.1.0, azure-data-tables 12.7.0, aiohttp 3.14.5. Web (checked 2026-11-21): react 19.3.1, @azure/msal-browser 5.29.0 (no msal-react), vite 8.3.6, vitest 5.1.0, typescript 7.0.2, @azure/static-web-apps-cli 2.1.0 (dev dependency, so the deploy runs the pinned CLI). Observability (checked 2026-11-23): azure-monitor-opentelemetry 1.8.12, opentelemetry-instrumentation-asgi 0.66b2 (not the Starlette instrumentation, untested on Starlette 1.x; no openai instrumentation, it duplicates chat spans), azure-monitor-query 2.0.0 (evals). Deploys (checked 2026-11-25, D-046): Bicep 0.49.2, azure/login v3.1.0, Azure/container-apps-deploy-action at the v2 tag's commit `8dff69dac3367c32ceb2690d8f13adbeab462703` (no v2.x.y tags exist), actions/checkout v7, actions/setup-node v7.1.0, astral-sh/setup-uv v10.3.3, gitleaks 8.30.1 checked by SHA-256 (`551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb` for `gitleaks_8.30.1_linux_x64.tar.gz`; a bump changes the version, file name and hash together). For later milestones: agent-framework-a2a 1.0.0b261112, azure-ai-projects 2.11.0, azure-ai-evaluation 1.18.12, openai 3.51.0.
 
 ## Workflow
 
@@ -85,6 +85,7 @@ Pinned versions (checked 2026-11-16; re-check before pinning): a2a-sdk 1.3.0 (ke
 
 ## Budget guardrails
 
-- Budget alerts at $10 and $18 from day one.
+- The budget is the $200 free credit until it runs out or the trial ends (D-024). $20.16 was spent by 27 November, almost all gpt-5-mini tokens from live check runs: model spending is fine within the credit.
+- Budget alerts from day one, at 50% and 90% of the monthly `BUDGET_AMOUNT` in `infra/.env` (default 20, so $10 and $18); changing it is the owner's choice.
 - The data runs on the Azure SQL free offer (AutoPause, never BillOverUsage). Fabric F2 appears only in milestone 12 and is paused at the end of every session; a forgotten F2 costs about $9.60 a day.
 - AI Search stays on the Free tier. Container Apps scale to zero. Images go to the GitHub container registry (public).

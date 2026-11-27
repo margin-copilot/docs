@@ -49,6 +49,7 @@ One entry per decision: what, why, what was rejected, and what would make us rev
 | D-043 | Observability: one trace per turn, keyless and without content; alerts by email; Grafana in the portal | 2026-11-23 |
 | D-044 | Answer speed: one tool for "why" questions, wake at sign-in | 2026-11-24 |
 | D-045 | Streaming progress: steps and the data agent's reply as they happen; the composed part whole, after its check | 2026-11-24 |
+| D-046 | Deploys: one Bicep deployment, a deploy identity per repo through GitHub OIDC; evals gate before, smoke after | 2026-11-27 |
 
 ---
 
@@ -56,6 +57,7 @@ One entry per decision: what, why, what was rejected, and what would make us rev
 - **Decision:** Build "Secure Pricing & Margin Copilot", an internal assistant that answers margin questions from sales data and pricing policy, shows each manager only their region, and drafts price changes a person must approve. Data and company (Riad Market) are fictional; store cities are real Moroccan cities; six planted stories.
 - **Why:** Learn the Azure agentic stack end to end, with the parts that matter in real systems: identity, evaluation, cost and failure handling. $20 budget, 1–2 h a day.
 - **Rejected:** "Chat with your PDF" demos (too shallow); any real company data.
+- **Amended (owner, 2026-11-27):** the budget is the $200 Azure free credit, not $20 (D-024).
 
 ### D-002 Microsoft Agent Framework (Python)
 - **Decision:** Agents are built with Microsoft Agent Framework (MAF) 1.x, pinned.
@@ -158,7 +160,7 @@ One entry per decision: what, why, what was rejected, and what would make us rev
 - **Rejected:** Turning off MFA for test users (weakens the tenant); password-based sign-in (deprecated, fails with MFA).
 
 ### D-020 Public docs repo as the hub
-- **Decision:** `margin-copilot-docs` (public) explains how the whole system works: architecture, identity and security model, agents, data and policies, evals, decision log, roadmap, and a run-it-yourself guide with teardown. Every service README links to it. Diagrams in Mermaid, rendered by GitHub; no docs site generator until it's needed.
+- **Decision:** `docs` (public; named without a prefix, D-025) explains how the whole system works: architecture, identity and security model, agents, data and policies, evals, decision log, roadmap, and a run-it-yourself guide with teardown. Every service README links to it. Diagrams in Mermaid, rendered by GitHub; no docs site generator until it's needed.
 - **Why:** With eleven repos, readers need one starting point. Cross-cutting behavior documented once can't contradict itself across READMEs.
 - **Rules:** each fact lives in one place (service-specific details stay in the service README); behavior and docs change together; placeholders instead of real IDs.
 - **Supersedes:** the open question of whether `docs/` moves into the infra repo.
@@ -168,7 +170,7 @@ One entry per decision: what, why, what was rejected, and what would make us rev
 - **Why:** Others should be able to reuse the code and docs for their own projects; MIT is simple and permissive.
 
 ### D-022 Master `CLAUDE.md` in the docs repo
-- **Decision:** From milestone 0, the workspace rules live in `margin-copilot-docs/CLAUDE.md`. The workspace folder keeps a symlink `CLAUDE.md` pointing to it. Each service repo can add its own short `CLAUDE.md` for service-specific rules.
+- **Decision:** From milestone 0, the workspace rules live in the docs repo's `CLAUDE.md` (`docs/CLAUDE.md`). The workspace folder keeps a symlink `CLAUDE.md` pointing to it. Each service repo can add its own short `CLAUDE.md` for service-specific rules.
 - **Why:** The workspace folder isn't a repo, so a file there isn't versioned. Claude Code reads `CLAUDE.md` from parent folders, so the symlink still applies the rules in every repo.
 
 ### D-023 App registrations in milestone 1
@@ -179,6 +181,7 @@ One entry per decision: what, why, what was rejected, and what would make us rev
 - **Decision:** Keep the Azure free account until model quota or the 30-day limit forces the upgrade; upgrade by day 28.
 - **Why:** The free account has a hard spending limit equal to the $200 credit. Pay-as-you-go has no spending limit at all, only budget alerts. Remaining credit carries over only until day 30.
 - **Watch:** if the subscription is disabled before the upgrade, resources are re-enabled and billed after upgrading.
+- **Amended (owner, 2026-11-27):** the project's budget is the $200 free credit, until it runs out or the free trial ends (about mid-December), replacing "$20 total" (D-001). $20.16 was spent by 27 November, almost all gpt-5-mini tokens from live check runs. The budget alerts' amounts still come from `BUDGET_AMOUNT` in the infra repo's `.env` (default 20, monthly; alerts at 50% and 90%); changing it is the owner's choice. Cost comparisons written earlier against $20 (D-031, D-034, D-044's "about $8 of budget left") predate this.
 
 ### D-025 GitHub organization
 - **Decision:** All repos live in the free GitHub organization `margin-copilot`, named without a prefix (`margin-copilot/orchestrator`). Repos are created empty and get their MIT LICENSE locally, so every commit carries the owner's no-reply email. CI runs the gitleaks CLI (release binary, checksum-verified) instead of `gitleaks/gitleaks-action`, which needs a license key for organizations.
@@ -188,12 +191,13 @@ One entry per decision: what, why, what was rejected, and what would make us rev
 ### D-026 Everything account-specific is configuration
 - **Decision:** No code or doc names the owner's usernames, emails, home paths, tenant domain or Azure IDs. Scripts read account-specific values at runtime (tenant default domain from Graph, subscription from `az`, an existing budget's start date from Azure) or from the repo's gitignored `.env`; a committed `.env.example` lists every setting. Configurable so far: `ALERT_EMAIL`, `BUDGET_AMOUNT`, `BUDGET_NAME`, `AZURE_LOCATION`, `ENTRA_DOMAIN`, `TEST_USERS`, `TEST_GROUPS`, `GITHUB_ORG`. Azure resource and workspace names follow the same rule as they're added.
 - **Why:** Privacy, and anyone can deploy the same code to their own Azure account and GitHub org without editing hardcoded names.
-- **Watch:** Azure rejects a changed budget start date, so `deploy-budget.sh` reuses the existing budget's.
+- **Watch:** Azure rejects a changed budget start date, so `deploy.sh` reuses the existing budget's (D-046; `deploy-budget.sh` before).
 
 ### D-027 App registrations by script, not Graph Bicep
 - **Decision:** `infra/scripts/entra-apps.sh` (Azure CLI + Microsoft Graph REST) creates the app registrations, scopes, service principals, federated credentials and consent grants. It's idempotent, with `entra-apps-check.sh` as its test, like the test users.
 - **Why:** The Microsoft Graph Bicep extension doesn't accept a personal Microsoft account as the deployer, and the owner administers the tenant with one. The script works with the same sign-in as everything else.
 - **Revisit if:** the deployer becomes a work account; then Graph Bicep could hold the apps and the managed identities in one template.
+- **Amended (D-046):** GitHub's federated credentials don't need Graph: they live on user-assigned managed identities (`id-<prefix>-gh-<repo>`), created in Bicep with everything else. The app registrations stay in the script.
 
 ### D-028 Agent card served without a token, inside the environment only
 - **Decision:** Agents serve `/.well-known/agent-card.json` without a token; every other path requires one.
@@ -333,9 +337,11 @@ One entry per decision: what, why, what was rejected, and what would make us rev
 - **Closes** D-029's open question, and milestone-2 deferred items 2–4: fake-mode factories and persona UPNs are no longer needed.
 - **Sign-ins are remembered:** each test user signs in through the browser once. `msal-extensions` keeps the tokens encrypted in the OS keychain (macOS: Keychain item `msal-extensions`; forget them with `security delete-generic-password -s msal-extensions`), so later runs are silent. A token is used only for the account whose name matches the case's persona.
 - **Revisit at milestone 10:** deploys gated by evals would need non-interactive test-user tokens for a scheduled live run.
+- **Answered by D-046:** a deploy is gated by the repo's tests and, for the orchestrator and the data agent, the CI suite against the pushed commit; after it, smoke checks that need no user token. The live suite stays the owner's per-milestone gate on the laptop.
+- **Amended (milestone 10):** the live runner retries a request twice (after 3 s and 6 s) only when its TCP connection never opened (`ConnectTimeout`, `ConnectError`). Nothing was sent, so no turn runs twice and no answer exists to judge: a retry can't pass a wrong answer. A read timeout, or any error after the request was sent, is never retried. The laptop's network failed in bursts during the milestone 10 gate (6 of 54 cases got no connection, with no answer).
 
 ### D-034 The data agent reaches Azure SQL through firewall rules for its outbound IPs
-- **Decision:** `infra/scripts/sql-allow-apps.sh` adds one SQL firewall rule per outbound IP of the data-agent container app (`properties.outboundIpAddresses`) and removes stale ones. Run it after every apps deploy. The laptop's rule stays. No "Allow Azure services".
+- **Decision:** `infra/scripts/sql-allow-apps.sh` adds one SQL firewall rule per outbound IP of the data-agent container app (`properties.outboundIpAddresses`) and removes stale ones. Run it after every apps deploy (since D-046, `deploy.sh create` runs it). The laptop's rule stays. No "Allow Azure services".
 - **Why:**
   - A VNet-integrated environment with a `Microsoft.Sql` service endpoint means recreating the environment, and it bills managed resources (a static IP and a load balancer): about $22–40 a month even at zero replicas.
   - A private endpoint adds about $7.30 a month on top of that VNet. Both break the $20 budget.
@@ -437,6 +443,10 @@ One entry per decision: what, why, what was rejected, and what would make us rev
   - a GitHub secret holding the deployment token: a stored secret (GitHub OIDC deploys come with milestone 10).
 - **Accepted risks:** `http://localhost:5173` stays a redirect URI and an allowed origin for local development; a page there still needs the user's own sign-in. `connect-src` allows any `*.azurecontainerapps.io` host; the deploy script could write the exact hosts.
 - **Result:** the owner's demo worked in the browser for north.mgr (question, draft, approval) and south.mgr ("Not in your access") after three fixes found in it (D-013 and D-040 amended, a policy-agent verdict rule). The live gate passed 54/54 three runs in a row, with A-22, south.mgr's demo question.
+- **Amended (D-046, web v0.3.1):**
+  - **The CSP lists the exact hosts:** the build writes `connect-src` from a template with the orchestrator's and proposals-api's origins (https only, no path), instead of `*.azurecontainerapps.io`. The accepted risk above is closed.
+  - **The deployment token is read through GitHub OIDC:** a push to `main` deploys the site. The job signs in as web's deploy identity (Contributor on the Static Web App only), reads the token, masks it and hands it to the pinned CLI. It's still never stored.
+  - The deploy's smoke checks the live site: status 200, and a CSP with both exact origins and no wildcard. The owner skipped the browser check, so the CSP is verified by the smoke, not yet in a browser.
 
 ### D-043 Observability: one trace per turn, keyless and without content; alerts by email; Grafana in the portal
 - **Decision:**
@@ -468,6 +478,7 @@ One entry per decision: what, why, what was rejected, and what would make us rev
   - a synthetic uptime test: a chat turn needs an MFA sign-in, and a ping keeps apps awake against scale to zero;
   - Foundry's Tracing page connection: an API-key connection that stores the connection string.
 - **Result:** one trace per turn across services; the live suite passed 54/54 with the cost report ($0.0047 a question, 16.9 s on average); the six alerts that can be drilled fired in drills. The drills found that rejected tokens diluted `chat-failing`; they no longer count as turns. The final review found that one bad turn, a cold downstream app, a scanner's 401s or an expected refusal could each send a false email; the queries now need two failures, warm turns only, the services' own routes and real failures. The latency baseline (`research/2026-11-latency-baseline.md`): a warm demo turn takes 60–88 s, nearly all model calls (reasoning tokens), and a cold one about 100 s more (container starts, then the database's resume).
+- **Amended (D-046):** the restart alerts moved to their own module, after the apps, in the one deployment. The "apps, monitoring, apps again" deploy order is gone.
 - **Known limits:**
   - a2a-sdk's own spans (about 30 per agent call) add volume, not content;
   - the user's oid appears in Table Storage query URLs (pseudonymous; the users are synthetic);
@@ -508,4 +519,46 @@ One entry per decision: what, why, what was rejected, and what would make us rev
   - **WebSockets:** a second protocol through the ingress and CORS, for one-way events;
   - **the browser's `EventSource`:** GET only, with no `Authorization` header, so the token would go in the URL.
 - **Not yet:** a faster non-reasoning model for the composer (a new Foundry deployment, and a risk of wrong verdicts).
+- **Amended (D-046):** the stream grace is a setting, `STREAM_SHUTDOWN_GRACE_SECONDS` (orchestrator v0.9.2; blank means the default 25 s since v0.9.3). Infra sets 235 s, and Container Apps waits 240 s before stopping the orchestrator, so a deploy no longer cuts a long streamed turn (the turn limit is 230 s).
 - **Result:** the live gate passed 54/54 three streamed runs in a row (average 15.4, 15.8 and 16.2 s and $0.0039–0.0041 a question) and once as JSON (15.5 s). On the warm demo question the first step shows within 0.2 s, the data agent's reply at 15.6–21.0 s (median 19.2 s) and the full answer at 35.3–40.2 s (median 35.8 s, from 44.3 s). The data agent's span went from 18–23 s to 13–19 s with `margin_change`'s queries at once; the composer was also shorter on these three runs (fewer output tokens, which vary run to run). The Container Apps ingress passes each event as it's written (not documented; checked live). The final review found that a deploy cut every open stream at once; the fixes (a 25 s grace for open streams, the early reply hidden from screen readers because the answer repeats it, the data agent's facts stripped mid-line too, and a judge rule that fails any answer naming them) passed 54/54 three streamed runs in a row (15.3–17.4 s, $0.0040–0.0041 a question) and once as JSON (16.3 s).
+
+### D-046 Deploys: one Bicep deployment, a deploy identity per repo through GitHub OIDC; evals gate before, smoke after
+- **Decision:**
+  - **One deployment instead of eight:** the infra repo's `bicep/main.bicep` (subscription scope) creates the resource group and the budget, then every resource in the group in dependency order. It's one deployment named after `NAME_PREFIX`, so two prefixes can share a subscription. `scripts/deploy.sh what-if|create` replaces the eight `deploy-*.sh` scripts, and the other scripts read the deployment's outputs through `scripts/outputs.sh`. The restart alerts have their own module after the apps, so the old "apps, monitoring, apps again" order is gone (D-043).
+  - **Infra deploys from the laptop,** with the owner's `az` sign-in. An infra deploy assigns roles, so running it from GitHub would need an Owner-level identity in CI.
+  - **A full infra deploy keeps the live images:** `deploy.sh` reads every app's current image with one `az containerapp list` and passes it to Bicep, so it never rolls back a pushed image. A list that can't be read stops the script instead of guessing. A brand-new app starts from `sha-<7>` of its repo's `main` on GitHub. The SQL firewall rule `laptop` follows the machine's current IP, as `deploy-data.sh` did: a stale dynamic address may now belong to someone else.
+  - **One deploy identity per deployable repo** (the five services and web): a user-assigned managed identity `id-<prefix>-gh-<repo>` with one federated credential. Its subject is GitHub's immutable form for that repo's `main`, `repo:<org>@<org-id>/<repo>@<repo-id>:ref:refs/heads/main`; `deploy.sh` reads the IDs from the GitHub API.
+    - A service's identity has "Container Apps Contributor" on its own app, and the same role on the Container Apps environment: writing an app also checks the environment's join permission. At the environment's scope the role grants only read, join and the name check; apps aren't children of the environment, so nothing on any app.
+    - Web's identity has "Contributor" on the Static Web App only, to read the deployment token at deploy time.
+    - All of it is in Bicep: a federated credential on a managed identity needs no Graph call (D-027).
+  - **IDs go in GitHub secrets, not variables** (`scripts/github-secrets.sh`, values on stdin): tenant, subscription and client IDs aren't credentials, but a public repo's logs are public, and secrets are masked in them. The app, resource group and site names are secrets for the same reason.
+  - **A push to `main` in a service repo:** test → image → evals gate (orchestrator and data-agent) → deploy → wait → smoke.
+    - **The gate:** a reusable workflow in `evals` runs the CI suite (fake adapters) against the pushed commit and checks that the installed package is that commit.
+    - **The deploy:** only on a push to `main` (the job's condition, and the credential's subject). `azure/login` with OIDC, then `Azure/container-apps-deploy-action` pinned to its v2 tag's commit SHA, with a 15-minute limit.
+    - **The wait,** up to 5 minutes: the new revision has the pushed image, it's provisioned, and it's the app's latest *ready* revision. It fails on `Failed` or `ActivationFailed`. A revision's provisioning state and traffic weight alone also pass a revision that never becomes ready.
+    - **The smoke needs no user token:** the orchestrator answers `POST /chat` with 401 and a CORS preflight from the web origin with 200 and the allow-origin header; proposals-api answers `GET /proposals` with 401. An internal agent's deploy is checked only by its readiness probe and the wait.
+    - **One run at a time per branch:** workflow-level concurrency with `cancel-in-progress: false`. A push waits for the running one; a newer waiting run replaces an older waiting one, so the latest commit ends up live (a middle push of three quick ones never deploys).
+  - **Web:** a push to `main` tests, builds with the CSP's exact hosts (D-042), deploys through OIDC and checks the live site.
+  - **One revision at a time, with a TCP readiness probe on port 8000:** a new revision gets traffic only once it listens; one that never does leaves the old revision serving.
+  - **Stop grace** (`terminationGracePeriodSeconds`): orchestrator 240 s, with its stream grace at 235 s (D-045; the turn limit is 230 s); the three agents 120 s; proposals-api the default 30 s.
+- **Why:** "A push to main deploys that service; evals gate it" (roadmap), with no stored credential anywhere. One identity per repo limits a compromised repo to its own app. CI can't sign in as test users (MFA, D-019), so the live suite can't gate a push; the CI suite and token-free smoke checks can.
+- **Rejected:**
+  - test-user passwords in Key Vault: password sign-in fails with MFA (D-019);
+  - a self-hosted runner holding the owner's test-user tokens: a public repo's workflow running on the owner's laptop;
+  - one identity for every repo: one compromised repo could redeploy every app;
+  - multiple revisions with a 0% label: the agents' internal ingress can't be reached from GitHub to test the label;
+  - a custom role on each app: the built-in role at the app and environment scopes was enough.
+- **Shown live:**
+  - a branch's `azure/login` is refused (AADSTS700213, no matching federated identity), and nothing deploys;
+  - a missing image is refused by Azure at the deploy step (`MANIFEST_UNKNOWN`), and the old revision keeps serving;
+  - an image that never becomes ready fails the wait (`ActivationFailed`) while the old revision serves;
+  - a second push's run waits until the first finishes, and the second commit ends up live;
+  - the public logs of every deploying repo show no tenant, subscription or client ID and no token (each grepped for the real values).
+- **Result:** every service and the web app deploy on push, all green, and an infra deploy kept every live image. The live gate passed 54/54 three runs in a row on the final versions (17.0 and 16.7 s, $0.0040 a question; the second run's cost report hit a network timeout), after the live runner's connect-only retry (D-033).
+- **Known limits:**
+  - after a never-ready deploy, the app's template holds the bad image, and `deploy.sh` would keep it on an infra deploy; the fix is pushing a good commit;
+  - `deploy.sh` reads the live images minutes before Azure applies the apps; a service deploy landing in that window is rolled back to the image read;
+  - `outputs.sh` reads one deployment record, empty while a create runs or after a failed one: don't run `entra-apps.sh` then (the web app's redirect URIs would shrink to localhost);
+  - `deploy.sh` needs `gh` signed in (the GitHub IDs and, for a new app, `main`'s commit);
+  - the deploy action prints the environment's name and location (no IDs). It's old code forced onto a newer Node; if that stops working, one `az containerapp update` step replaces it;
+  - the CSP is checked by the deploy's smoke, not yet in a browser.

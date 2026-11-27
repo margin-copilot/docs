@@ -2,6 +2,8 @@
 
 Rough estimates, assuming about 10 hours a week (1–2 hours a day) with Claude writing code and the owner reviewing.
 
+Budget: the $200 Azure free credit, until it runs out or the free trial ends (about mid-December), not the $20 first planned (owner, 2026-11-27; D-024). $20.16 was spent by 27 November, almost all model tokens from live check runs.
+
 ## Workspace layout
 
 All repos belong to the GitHub organization `margin-copilot`.
@@ -55,7 +57,7 @@ Dockerfile  pyproject.toml  .env.example  .github/workflows/{ci,build}.yml (ci =
 | 9 | Observability and cost: traces across services, cost per question | 4 | Every eval run reports cost per question — done 2026-11-23 (one trace per turn, alerts by email, Grafana dashboard; live run 54/54 with time and cost per question; latency baseline) |
 | – | Latency fixes (D-044): `margin_change`, wake at sign-in | 3 | Warm demo question at most 40 s, the gate still passes — done 2026-11-24, target missed (warm demo median 44.3 s, from 60–88 s; after sign-in from cold 48.1 s, from 167.5 s; 54 live cases three runs in a row, 16.5–17.1 s and about $0.0041 a question) |
 | – | Streaming (D-045): steps and the data agent's reply as they come; `margin_change`'s queries at once | 2 | The demo's data reply at most 26 s, the full answer no slower, the gate still passes streamed and as JSON — done 2026-11-24 (first step within 0.2 s, data reply median 19.2 s, full answer median 35.8 s from 44.3 s; 54 live cases three streamed runs in a row, 15.4–16.2 s, and one JSON run) |
-| 10 | Full Bicep + per-repo GitHub Actions deploys (OIDC) | 10 | A push to main deploys that service; evals gate it |
+| 10 | Full Bicep + per-repo GitHub Actions deploys (OIDC) (D-046) | 10 | A push to main deploys that service; evals gate it — done 2026-11-27 (one Bicep deployment that keeps the live images; a deploy identity per repo through OIDC; every push tests, runs the evals gate (orchestrator, data-agent), deploys, waits for a ready revision and smoke-tests; 54 live cases three runs in a row, 16.7–17.0 s and $0.0040 a question) |
 | 11 | Adversarial pass: poisoned document, RLS bypass (incl. inference through errors), SQL injection, wrong-caller tokens | 5 | Each finding has a test and a fix note |
 | 12 | Stretch: Fabric lakehouse + Fabric Data Agent on paid F2 hours (MCP + OBO), compared with `run_sql` on Azure SQL | 4 | Comparison note written; F2 paused |
 

@@ -104,9 +104,9 @@ Sales data lives in an Azure SQL free-offer database on an Entra-only server (no
 - **A public client:** the SPA holds no secret. Sign-in is an MSAL redirect with PKCE; tokens live in `sessionStorage` and end with the tab (D-042).
 - **One token per service:** chat uses a token for the orchestrator, the approvals screen one for proposals-api. The browser never holds a token for an agent, and the web app can't create drafts: it's on proposals-api's review list, never the draft list.
 - **No hidden frames:** silent renewal uses the cached and refresh tokens only, then a redirect, so the CSP allows no frames at all (`frame-ancestors 'none'`, no `frame-src`).
-- **CSP and plain text:** scripts and styles load only from the site; the page connects only to Entra and the Container Apps hosts. Answers and proposal fields render as text, never HTML or Markdown, so an agent's output can't inject markup.
+- **CSP and plain text:** scripts and styles load only from the site; the page connects only to Entra and the two APIs' exact origins, written into the CSP at build time (D-042, D-046). Answers and proposal fields render as text, never HTML or Markdown, so an agent's output can't inject markup.
 - **CORS is a convenience:** the orchestrator and proposals-api allow exact origins (the site and local development) for `GET`/`POST` with `Authorization` and `Content-Type`. It lets browsers call; it doesn't protect anything. The token check does.
-- **The deployment token is never stored:** the deploy script fetches it, passes it to the pinned CLI in the environment, then unsets it.
+- **The deployment token is never stored:** the deploy job signs in through GitHub OIDC, reads the token, masks it and passes it to the pinned CLI in the environment; the infra repo's `deploy-web.sh` does the same from a laptop.
 
 ## Warm-up at sign-in
 
@@ -148,6 +148,22 @@ Sales data lives in an Azure SQL free-offer database on an Entra-only server (no
 ## Network
 
 All apps share one Container Apps environment with peer-to-peer encryption on. Only the orchestrator and proposals-api have external ingress (people reach them; proposals-api's routes still accept only the allow-listed apps). The data, policy and action agents answer only inside the environment (404 from outside). Container Apps authenticates apps to each other but doesn't authorize them; the token checks above do.
+
+## Deploys (D-046)
+
+- **No stored credential:** each deployable repo signs in to Azure through GitHub OIDC as its own managed identity (`id-<prefix>-gh-<repo>`). Its one federated credential trusts only a push to that repo's `main`, with GitHub's immutable subject (the org's and the repo's numeric IDs), so a repo deleted and recreated under the same name doesn't match.
+- **What each identity can touch:**
+  - a service's identity: "Container Apps Contributor" on its own app, and the same role on the environment, which there grants only read, join and the name check (nothing on any app);
+  - web's identity: "Contributor" on the Static Web App only, to read its deployment token;
+  - no role at resource-group or subscription scope, and no role on data (SQL, Storage, AI Search, Foundry).
+- **What a compromised repo could do:** change its own app, which runs as that app's own identity with its own roles. That's what a deploy is. It can't reach another app or give its app another identity (that needs a role on the identity), and every request still passes the token checks above.
+- **What CI can't do:**
+  - get an Azure token from a branch, a pull request or a fork: the deploy job runs only on a push to `main`, and Entra refuses any other subject (AADSTS700213, shown live);
+  - sign in as a test user (MFA, D-019): the gate before a deploy is the CI suite on fakes, and the smoke after it needs no user token;
+  - change the infrastructure or assign a role: infra deploys only from the owner's laptop.
+- **The logs are public:** tenant, subscription and client IDs, the app, resource group and site names are GitHub secrets, so GitHub masks them; the apps' hostnames and the web origin are masked with `::add-mask::` before use. Each repo's deploy logs were grepped for the real IDs: no match. The deploy action prints the environment's name and location, which aren't IDs.
+- **Pinned tools:** actions by exact release tag, the Container Apps deploy action by commit SHA; gitleaks is checked against its SHA-256 in every repo's secret scan.
+- **The gate tests the pushed code:** the evals gate installs the service at the pushed commit and checks that the installed package is that commit before running the suite.
 
 ## Tests and the local issuer
 
